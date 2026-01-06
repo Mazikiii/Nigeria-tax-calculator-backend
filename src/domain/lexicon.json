@@ -1,7 +1,23 @@
 {
   "income": {
     "SALARY": {
-      "keywords": ["SALARY", "SAL", "NET PAY", "EMOLUMENT", "PAYROLL", "WAGES", "REMUNERATION", "HONORARIUM", "MONTHLY PAY", "STIPEND", "ALLOWANCE", "BASIC PAY", "13TH MONTH", "UPFRONT", "ARREARS"],
+      "keywords": [
+        "SALARY",
+        "SAL",
+        "NET PAY",
+        "EMOLUMENT",
+        "PAYROLL",
+        "WAGES",
+        "REMUNERATION",
+        "HONORARIUM",
+        "MONTHLY PAY",
+        "STIPEND",
+        "ALLOWANCE",
+        "BASIC PAY",
+        "13TH MONTH",
+        "UPFRONT",
+        "ARREARS"
+      ],
       "patterns": [
         ["STAFF", "SAL"],
         ["JANUARY", "PAY"],
@@ -19,7 +35,20 @@
       ]
     },
     "DIVIDEND": {
-      "keywords": ["DIVIDEND", "DIV", "CSCS", "REGISTRAR", "SHARE", "RETURN", "COUPON", "YIELD", "INTEREST", "CAPITAL GAIN", "PROFIT SHARE", "UNIT TRUST"],
+      "keywords": [
+        "DIVIDEND",
+        "DIV",
+        "CSCS",
+        "REGISTRAR",
+        "SHARE",
+        "RETURN",
+        "COUPON",
+        "YIELD",
+        "INTEREST",
+        "CAPITAL GAIN",
+        "PROFIT SHARE",
+        "UNIT TRUST"
+      ],
       "patterns": [
         ["ARM", "INV"],
         ["STANBIC", "IBTC"],
@@ -31,7 +60,22 @@
       ]
     },
     "FREELANCE": {
-      "keywords": ["FREELANCE", "GIG", "REMOTE", "CONTRACT", "CONSULT", "PAYONEER", "GREY", "GEEGPAY", "SKRILL", "WISE", "WORLDREMIT", "SENDWAVE", "REMITLY", "LEMONADE"],
+      "keywords": [
+        "FREELANCE",
+        "GIG",
+        "REMOTE",
+        "CONTRACT",
+        "CONSULT",
+        "PAYONEER",
+        "GREY",
+        "GEEGPAY",
+        "SKRILL",
+        "WISE",
+        "WORLDREMIT",
+        "SENDWAVE",
+        "REMITLY",
+        "LEMONADE"
+      ],
       "patterns": [
         ["WIRE", "INFLOW"],
         ["USD", "INFLOW"],
@@ -53,7 +97,16 @@
       ]
     },
     "STIPEND": {
-      "keywords": ["STIPEND", "INTERN", "NYSC", "ALLAWI", "CORPER", "GRANT", "BURSARY", "SCHOLARSHIP"],
+      "keywords": [
+        "STIPEND",
+        "INTERN",
+        "NYSC",
+        "ALLAWI",
+        "CORPER",
+        "GRANT",
+        "BURSARY",
+        "SCHOLARSHIP"
+      ],
       "patterns": [
         ["TRAINING", "ALLOWANCE"],
         ["POCKET", "MONEY"],
@@ -61,16 +114,48 @@
       ]
     },
     "BONUS": {
-      "keywords": ["BONUS", "INCENTIVE", "COMMISSION", "COMM", "REWARD", "GRATUITY", "GIFT", "AWARD", "PRIZE", "WINNING", "BETNAIJA", "SPORTYBET", "MSPORT", "1XBET"],
+      "keywords": [
+        "BONUS",
+        "INCENTIVE",
+        "COMMISSION",
+        "COMM",
+        "REWARD",
+        "GRATUITY",
+        "GIFT",
+        "AWARD",
+        "PRIZE",
+        "WINNING",
+        "BETNAIJA",
+        "SPORTYBET",
+        "MSPORT",
+        "1XBET"
+      ],
       "patterns": [
         ["PERFORMANCE", "PAY"],
         ["EX", "GRATIA"]
       ]
     }
   },
+
   "tax_exempt": {
     "GIFT": {
-      "keywords": ["GIFT", "SUPPORT", "DONATION", "ALMS", "TITHE", "OFFERING", "ZAKAT", "WEDDING", "BIRTHDAY", "FUNERAL", "CONTRIBUTION", "DASHO", "GOODWILL", "CHARITY", "NGO"],
+      "keywords": [
+        "GIFT",
+        "SUPPORT",
+        "DONATION",
+        "ALMS",
+        "TITHE",
+        "OFFERING",
+        "ZAKAT",
+        "WEDDING",
+        "BIRTHDAY",
+        "FUNERAL",
+        "CONTRIBUTION",
+        "DASHO",
+        "GOODWILL",
+        "CHARITY",
+        "NGO"
+      ],
       "patterns": [
         ["FAMILY", "SUPPORT"],
         ["KEEP", "CHANGE"],
@@ -78,7 +163,21 @@
       ]
     },
     "REFUND": {
-      "keywords": ["REFUND", "REVERSAL", "REV", "RETURN", "FAILED", "DECLINED", "ERRONEOUS", "RETRACTION", "DISPUTE", "CHARGEBACK", "RECLAIM", "RESTITUTION", "REIMBURSEMENT"],
+      "keywords": [
+        "REFUND",
+        "REVERSAL",
+        "REV",
+        "RETURN",
+        "FAILED",
+        "DECLINED",
+        "ERRONEOUS",
+        "RETRACTION",
+        "DISPUTE",
+        "CHARGEBACK",
+        "RECLAIM",
+        "RESTITUTION",
+        "REIMBURSEMENT"
+      ],
       "patterns": [
         ["OUT", "OF", "POCKET"],
         ["EXPENSE", "CLAIM"],
@@ -90,7 +189,22 @@
       ]
     },
     "SAVINGS": {
-      "keywords": ["SAVINGS", "SAVE", "PIGGYVEST", "COWRYWISE", "KOLOPAY", "TARGET", "SAFELOCK", "FLEX", "VEST", "INVEST", "THRIFT", "AJO", "ESUSU", "COOPERATIVE"],
+      "keywords": [
+        "SAVINGS",
+        "SAVE",
+        "PIGGYVEST",
+        "COWRYWISE",
+        "KOLOPAY",
+        "TARGET",
+        "SAFELOCK",
+        "FLEX",
+        "VEST",
+        "INVEST",
+        "THRIFT",
+        "AJO",
+        "ESUSU",
+        "COOPERATIVE"
+      ],
       "patterns": [
         ["FIXED", "DEPOSIT"],
         ["TREASURY", "BILL"],
@@ -99,13 +213,36 @@
       ]
     },
     "PROCEEDS": {
-      "keywords": ["PROCEEDS", "DISPOSAL", "LIQUIDATION", "MATURITY", "REDEMPTION", "CASHOUT", "WITHDRAWAL"],
-      "patterns": [
-        ["SALE", "OF"]
-      ]
+      "keywords": [
+        "PROCEEDS",
+        "DISPOSAL",
+        "LIQUIDATION",
+        "MATURITY",
+        "REDEMPTION",
+        "CASHOUT",
+        "WITHDRAWAL"
+      ],
+      "patterns": [["SALE", "OF"]]
     },
     "LOAN": {
-      "keywords": ["LOAN", "DISBURSE", "CREDIT", "ADVANCE", "OVERDRAFT", "FACILITY", "PRINCIPAL", "LENDING", "BORROW", "DEBT", "CARBON", "FAIRMONEY", "BRANCH", "RENMONEY", "LAPO", "MICROFINANCE"],
+      "keywords": [
+        "LOAN",
+        "DISBURSE",
+        "CREDIT",
+        "ADVANCE",
+        "OVERDRAFT",
+        "FACILITY",
+        "PRINCIPAL",
+        "LENDING",
+        "BORROW",
+        "DEBT",
+        "CARBON",
+        "FAIRMONEY",
+        "BRANCH",
+        "RENMONEY",
+        "LAPO",
+        "MICROFINANCE"
+      ],
       "patterns": [
         ["PAGE", "FINANCIALS"],
         ["KUDA", "MONEY"]
@@ -114,7 +251,17 @@
   },
   "relief": {
     "RENT": {
-      "keywords": ["RENT", "LEASE", "TENANCY", "ACCOMMODATION", "HOUSING", "FLAT", "APARTMENT", "LANDLORD", "ESTATE"],
+      "keywords": [
+        "RENT",
+        "LEASE",
+        "TENANCY",
+        "ACCOMMODATION",
+        "HOUSING",
+        "FLAT",
+        "APARTMENT",
+        "LANDLORD",
+        "ESTATE"
+      ],
       "patterns": [
         ["FACILITY", "MGT"],
         ["SERVICE", "CHARGE"],
@@ -134,13 +281,47 @@
       ]
     },
     "SCHOOL": {
-      "keywords": ["SCHOOL", "SCH", "EDU", "COLLEGE", "ACADEMY", "INSTITUTE", "CRECHE", "NURSERY", "PRIMARY", "SECONDARY", "UNI", "VARSITY", "POLY", "MONOTECH", "LEARNING", "TUTOR", "LESSON", "BOOKS", "UNIFORM"],
-      "patterns": [
-        ["HIGH", "SCHOOL"]
-      ]
+      "keywords": [
+        "SCHOOL",
+        "SCH",
+        "EDU",
+        "COLLEGE",
+        "ACADEMY",
+        "INSTITUTE",
+        "CRECHE",
+        "NURSERY",
+        "PRIMARY",
+        "SECONDARY",
+        "UNI",
+        "VARSITY",
+        "POLY",
+        "MONOTECH",
+        "LEARNING",
+        "TUTOR",
+        "LESSON",
+        "BOOKS",
+        "UNIFORM"
+      ],
+      "patterns": [["HIGH", "SCHOOL"]]
     },
     "TUITION": {
-      "keywords": ["TUITION", "FEES", "EXAM", "LEVY", "PTA", "ACCEPTANCE", "MATRICULATION", "CONVOCATION", "SEMINAR", "WORKSHOP", "COURSE", "TRAINING", "CERTIFICATION", "COURSERA", "UDEMY"],
+      "keywords": [
+        "TUITION",
+        "FEES",
+        "EXAM",
+        "LEVY",
+        "PTA",
+        "ACCEPTANCE",
+        "MATRICULATION",
+        "CONVOCATION",
+        "SEMINAR",
+        "WORKSHOP",
+        "COURSE",
+        "TRAINING",
+        "CERTIFICATION",
+        "COURSERA",
+        "UDEMY"
+      ],
       "patterns": [
         ["SCH", "FEES"],
         ["PROJECT", "FEE"],
@@ -150,7 +331,20 @@
   },
   "deduction": {
     "PENSION": {
-      "keywords": ["PENSION", "PENCOM", "PFA", "RSA", "RETIRE", "GRATUITY", "FUND", "AVC", "CRUSADER", "LEADWAY", "SIGMA", "VERITAS"],
+      "keywords": [
+        "PENSION",
+        "PENCOM",
+        "PFA",
+        "RSA",
+        "RETIRE",
+        "GRATUITY",
+        "FUND",
+        "AVC",
+        "CRUSADER",
+        "LEADWAY",
+        "SIGMA",
+        "VERITAS"
+      ],
       "patterns": [
         ["STANBIC", "PENSION"],
         ["ARM", "PENSION"],
@@ -168,7 +362,17 @@
       ]
     },
     "NHIS": {
-      "keywords": ["NHIS", "HMO", "MEDICARE", "HYGEIA", "RELIANCE", "AVON", "AIICO", "NONO", "RODAN"],
+      "keywords": [
+        "NHIS",
+        "HMO",
+        "MEDICARE",
+        "HYGEIA",
+        "RELIANCE",
+        "AVON",
+        "AIICO",
+        "NONO",
+        "RODAN"
+      ],
       "patterns": [
         ["HEALTH", "INS"],
         ["AXA", "MANSARD"],
@@ -186,7 +390,21 @@
       ]
     },
     "PAYE": {
-      "keywords": ["PAYE", "TAX", "FIRS", "SBIR", "PITA", "WHT", "WITHHOLDING", "VAT", "EDT", "ITF", "NSITF", "LEVY", "DUTY"],
+      "keywords": [
+        "PAYE",
+        "TAX",
+        "FIRS",
+        "SBIR",
+        "PITA",
+        "WHT",
+        "WITHHOLDING",
+        "VAT",
+        "EDT",
+        "ITF",
+        "NSITF",
+        "LEVY",
+        "DUTY"
+      ],
       "patterns": [
         ["DIRECT", "ASSESS"],
         ["STAMP", "DUTY"],
@@ -197,12 +415,28 @@
   "business_exp": {
     "AWS": {
       "keywords": ["AWS", "AMZN", "CLOUD", "EC2", "S3", "ROUTE53"],
-      "patterns": [
-        ["AMAZON", "WEB"]
-      ]
+      "patterns": [["AMAZON", "WEB"]]
     },
     "HOSTING": {
-      "keywords": ["HOSTING", "DOMAIN", "SERVER", "SSL", "CPANEL", "WHOGOHOST", "QSERVERS", "GODADDY", "NAMECHEAP", "HOSTINGER", "BLUEHOST", "DIGITALOCEAN", "LINODE", "VULTR", "HEROKU", "VERCEL", "NETLIFY"],
+      "keywords": [
+        "HOSTING",
+        "DOMAIN",
+        "SERVER",
+        "SSL",
+        "CPANEL",
+        "WHOGOHOST",
+        "QSERVERS",
+        "GODADDY",
+        "NAMECHEAP",
+        "HOSTINGER",
+        "BLUEHOST",
+        "DIGITALOCEAN",
+        "LINODE",
+        "VULTR",
+        "HEROKU",
+        "VERCEL",
+        "NETLIFY"
+      ],
       "patterns": [
         ["GOOGLE", "CLOUD"],
         ["MICROSOFT", "AZURE"]
@@ -244,27 +478,90 @@
       ]
     },
     "OTHER_DATA": {
-      "keywords": ["GLO", "9MOBILE", "SPECTRANET", "SMILE", "IPNX", "FIBERONE", "STARLINK", "TIZETI", "WIFI", "INTERNET"],
-      "patterns": [
-        ["DATA", "SUB"]
-      ]
+      "keywords": [
+        "GLO",
+        "9MOBILE",
+        "SPECTRANET",
+        "SMILE",
+        "IPNX",
+        "FIBERONE",
+        "STARLINK",
+        "TIZETI",
+        "WIFI",
+        "INTERNET"
+      ],
+      "patterns": [["DATA", "SUB"]]
     },
     "TRANSPORT": {
-      "keywords": ["INDRIVER", "LAGRIDE", "RIDA", "GOKADA", "MAX", "COWRY", "DANFO", "SHUTTLE", "LOGISTICS", "DELIVERY", "DISPATCH", "DHL", "FEDEX", "UPS", "PETROL", "FUEL", "DIESEL", "TOTAL", "OANDO", "NNPC", "SHELL", "CONOIL", "MRS"],
+      "keywords": [
+        "INDRIVER",
+        "LAGRIDE",
+        "RIDA",
+        "GOKADA",
+        "MAX",
+        "COWRY",
+        "DANFO",
+        "SHUTTLE",
+        "LOGISTICS",
+        "DELIVERY",
+        "DISPATCH",
+        "DHL",
+        "FEDEX",
+        "UPS",
+        "PETROL",
+        "FUEL",
+        "DIESEL",
+        "TOTAL",
+        "OANDO",
+        "NNPC",
+        "SHELL",
+        "CONOIL",
+        "MRS"
+      ],
       "patterns": [
         ["GIG", "LOGISTICS"],
         ["RED", "STAR"]
       ]
     },
     "UTILITIES": {
-      "keywords": ["PHCN", "NEPA", "EKEDC", "IKEDC", "AEDC", "IBEDC", "JEDC", "KEDCO", "EEDC", "BEDC", "YEDC", "BUYPOWER", "METER", "TOKEN", "UNIT", "RECHARGE"],
+      "keywords": [
+        "PHCN",
+        "NEPA",
+        "EKEDC",
+        "IKEDC",
+        "AEDC",
+        "IBEDC",
+        "JEDC",
+        "KEDCO",
+        "EEDC",
+        "BEDC",
+        "YEDC",
+        "BUYPOWER",
+        "METER",
+        "TOKEN",
+        "UNIT",
+        "RECHARGE"
+      ],
       "patterns": [
         ["IKEJA", "ELECTRIC"],
         ["EKO", "ELECTRIC"]
       ]
     },
     "PAYMENT_GATEWAYS": {
-      "keywords": ["PAYSTACK", "FLUTTERWAVE", "FLW", "RAVE", "MONNIFY", "REMITA", "INTERSWITCH", "QUICKTELLER", "OPAY", "PALMPAY", "PAGA", "VOGUEPAY"],
+      "keywords": [
+        "PAYSTACK",
+        "FLUTTERWAVE",
+        "FLW",
+        "RAVE",
+        "MONNIFY",
+        "REMITA",
+        "INTERSWITCH",
+        "QUICKTELLER",
+        "OPAY",
+        "PALMPAY",
+        "PAGA",
+        "VOGUEPAY"
+      ],
       "patterns": []
     }
   }
