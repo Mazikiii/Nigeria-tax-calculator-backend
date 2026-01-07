@@ -105,6 +105,7 @@ impl TransactionCategorizer {
         };
     }
 
+    // get charges function
     fn extract_charge(&self, narration: &str) -> Decimal {
         // .and_then(...)`: This says "If the previous step succeeded (found a regex match),
         // pass the result to this function.
@@ -115,30 +116,61 @@ impl TransactionCategorizer {
             .unwrap_or(Dec!(0));
     }
 
+    // get keyword function
     fn analyze_keywords(&self, words: &HashSet<String>) -> Option<TransactionRole> {
         for word in words {
             if self.keywords_container.contains_key(word) {
-                return Some(self.keywords_container.get(word));
+                return Some(*self.keywords_container.get(word).unwrap());
             }
         }
         None
     }
 
-    // so first what does the self.pattern_container look like? <string, pattern rule>
-    // a word and its various patterns
-    // we check if the word exists in the hashmap then open a loop if it does
-    // we chec
+    // get patterns function
     fn analyze_pattern(&self, words: &HashSet<String>) -> Option<TransactionRole> {
         for word_in_pile in words {
             // if the word exists
             if let Some(word) = self.pattern_container.get(word_in_pile) {
                 for pattern in word {
                     if pattern.required_words.is_subset(words) {
-                        Some(pattern.role)
+                        Some(*pattern.role)
                     }
                 }
             }
             None
+        }
+    }
+
+    //fuzzy or misspell checker
+    fn fuzzy_checker(&self, narration: &str) -> Option<TransactionRole> {
+        let uppercase_narration = narration.to_uppercase();
+        let size_of_narration = uppercase_narration.len();
+
+        if size_of_narration < 2 {
+            return None;
+        }
+
+        // If length difference is > 2, the edit distance is definitely > 4.
+        // This skips 90% of comparisons immediately.
+        for (keyword, role) in self.keyword_container {
+            let length_of_keyword = keyword.len();
+            //if the word difference is very large then its not something to consider
+            // the misspell(input) and the actual word
+            if (size_of_narration as i32 - length_of_keyword as i32).abs() > 4 {
+                continue;
+            }
+
+            // "Salary" vs "Pallery" -> Skip.
+            if size_of_narration == length_of_keyword {
+                continue;
+            }
+
+            // the actual processing, compare the the misspell with an actual word
+            let ratio = fuzzywuzzy::fuzzy::ratio(&uppercase_narration, keyword);
+            if ratio > 82 {
+                // if comparism is pretty high return the role
+                return Some(*role);
+            }
         }
     }
 
@@ -155,5 +187,26 @@ impl TransactionCategorizer {
             .filter(|s| !s.is_empty())
             .map(|s| s.to_string())
             .collect();
+
+        // layer by layer we check, first a pattern? no then keyword?
+    }
+
+    // layer by layer we check, first a pattern? no then keyword? fuzzy? ai then
+    // you could use coR here but that is overkill
+    fn layer_processor(&self, words: &HashSet<String>, narration: &str) -> (TransactionRole, i32) {
+        if let Some(process) = analyze_pattern(words) {
+            Some(process, 100)
+        }
+
+        if let Some(process) = analyze_keywords(words) {
+            Some(process, 100)
+        }
+
+        if let Some(process) = fuzzy_checker(narration) {
+            Some(process, 100)
+        }
+
+        // if all failes then transaction unknown, ai handle it
+        (transaction::unknown, 0)
     }
 }
