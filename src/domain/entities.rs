@@ -1,5 +1,19 @@
 use rust_decimal::Decimal;
+use serde::Deserialize;
+use std::collections::HashMap;
 use thiserror::Error;
+
+#[derive(Debug, Deserialize)]
+pub struct LexiconFile {
+    #[serde(flatten)]
+    pub categories: HashMap<String, HashMap<String, CategoryRule>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CategoryRule {
+    pub keywords: Vec<String>,
+    pub patterns: Vec<Vec<String>>,
+}
 
 #[derive(Debug, Clone)]
 pub struct RawStatement {
