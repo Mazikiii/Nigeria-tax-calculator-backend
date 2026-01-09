@@ -189,6 +189,15 @@ impl TransactionCategorizer {
             .collect();
 
         // layer by layer we check, first a pattern? no then keyword?
+        let (role, confidence) = self.layer_processor(&narration_words, &raw.narration);
+        let parsed = ParsedTransaction {
+            amount: raw.amount,
+            narration: raw.narration,
+            role: role,
+            confidence: confidence,
+            charges: check,
+            date: raw.date,
+        };
     }
 
     // layer by layer we check, first a pattern? no then keyword? fuzzy? ai then
