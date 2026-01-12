@@ -51,10 +51,14 @@ pub enum TaxEntity {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransactionRole {
     Income,      // standard taxable inflow (Salary)
-    TaxExempt,   // inflows that is not taxable (Gifts etc)
+    BusinessExp, // For LLCs, allowable expenses (Bank charges, Salaries paid)
+    Salary,      // Income (if Credit), Expense (if Debit for LLC)
+    TaxExempt,   // inflows and outflows that is not taxable (Gifts,loan repay etc)
+    Utilities,   // Can be Expense (LLC) or Personal (PIT)
+    Rent,        // Can be Relief (PIT) or Expense (LLC)
     Relief,      // specific "tax Credit" categories (Rent relief - 20%)
     Deduction,   // statutory outflows (Pension, NHIS, NHF)
-    BusinessExp, // For LLCs, allowable expenses (Bank charges, Salaries paid)
+    PersonalExp, // the tax man does not care about this
     Unknown,     // Vague narrations requiring user input
 }
 

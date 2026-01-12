@@ -1,10 +1,12 @@
 // I need to convert a raw Statement(the type defined in the domain entites) to a parsed statement
 // Parsed Statment is the major thing that i'm working with. Its is the product of initial analysis
-use entities::{CategoryRule, LexiconFile, ParsedStatment, RawStatment, TransactionRole};
+use crate::domain::entities::{
+    CategoryRule, LexiconFile, ParsedStatment, RawStatment, TransactionRole,
+};
 use regex::Regex;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
-use std::collection::{Hashmap, Hashset};
+use std::collections::{HashMap, HashSet};
 use std::fs;
 
 // First i need to rule out whether the transaaction is a charge VAT or Stamp duties
@@ -26,17 +28,17 @@ struct PatternRule {
 struct TransactionCategorizer {
     // what are the fields the transaction categorizer should have?
     // the hashmap that has keywords another that has patterns stored and a charge of type regex
-    keywords_container: Hashmap<String, TransactionRole>,
-    pattern_container: Hashmap<String, Vec<PatternRule>>,
+    keywords_container: HashMap<String, TransactionRole>,
+    pattern_container: HashMap<String, Vec<PatternRule>>,
     charge: Regex,
 }
 
 impl TransactionCategorizer {
     // need a constructor that fills the containers with the right data
-    fn new() -> self {
+    fn new() -> Self {
         // to fill the containers we need the data in the json, need serde to parse after
         let json_to_string =
-            fs::read_to_String(src / domain / lexicon.json).expect("Failed to read Json");
+            fs::read_to_String("src/domain/lexicon.json").expect("Failed to read Json");
 
         // now use serde to parse it properly, but and arrange it
         // the structure is needed which was defined as LexiconFile in entities
@@ -44,19 +46,33 @@ impl TransactionCategorizer {
             serde_json::from_str(json_to_string).expect("Failed to arrange string");
 
         // initialize the keyword and pattern containers
-        let mut keywords_container = Hashmap::new();
-        let mut pattern_container = Hashmap::new();
+        let mut keywords_container = HashMap::new();
+        let mut pattern_container = HashMap::new();
 
         // now fill the container with a loop based on the arranged string var
         for (category, sub_category) in arranged_string {
             // have to give each category a role
-            let role = match category.to_str() {
-                "income" => TransactionRole::Income,
-                "tax_exempt" => TransactionRole::TaxExempt,
-                "relief" => TransactionRole::Relief,
-                "deduction" => TransactionRole::Deduction,
-                "business_exp" => TransactionRole::BusinessExp,
-                _ => TransactionRole::Unknown, // this is for defensive programming
+            // dynamically checking Sub-Category name first
+            let role = match sub_category_name.as_str() {
+                // sub categories
+                // the subwords are uppercase in the json
+                "RENT" => TransactionRole::Rent,
+                "UTILITIES" => TransactionRole::Utilities,
+                "SALARY" => TransactionRole::Salary,
+                "SCHOOL" | "TUITION" => TransactionRole::Relief, // Education is still generic Relief
+                _ => {
+                    //if not in the above categories, check the below too
+                    match category_key.as_str() {
+                        // category
+                        // the root words in the json is lowercase
+                        "income" => TransactionRole::Income,
+                        "business_exp" => TransactionRole::BusinessExp,
+                        "tax_exempt" => TransactionRole::TaxExempt,
+                        "deduction" => TransactionRole::Deduction,
+                        "relief" => TransactionRole::Relief,
+                        _ => TransactionRole::Unknown,
+                    }
+                }
             };
 
             if role == TransactionRole::Unknown {
@@ -72,7 +88,7 @@ impl TransactionCategorizer {
 
                 // for patterns. Remember the patternRule struct
                 for items in data.patterns {
-                    let required_words = Hashset = items.iter().map(|s| s.to_uppercase()).collect();
+                    let required_words = HashSet = items.iter().map(|s| s.to_uppercase()).collect();
 
                     if required_words.is_empty() {
                         continue;
@@ -110,10 +126,11 @@ impl TransactionCategorizer {
         // .and_then(...)`: This says "If the previous step succeeded (found a regex match),
         // pass the result to this function.
         // If it failed, just skip this whole block."
-        self.charge
+        let mut charge_regex = self.charge;
+        charge_regex
             .captures(narration)
             .and_then(|c| c[2].replace(',', "").parse::<Decimal>().ok())
-            .unwrap_or(Dec!(0));
+            .unwrap_or(dec!(0))
     }
 
     // get keyword function
@@ -160,13 +177,13 @@ impl TransactionCategorizer {
                 continue;
             }
 
-            // "Salary" vs "Pallery" -> Skip.
+            // "Salary" vs "Pallery"
             if size_of_narration == length_of_keyword {
                 continue;
             }
 
             // the actual processing, compare the the misspell with an actual word
-            let ratio = fuzzywuzzy::fuzzy::ratio(&uppercase_narration, keyword);
+            let ratio = fuzzywuzzy::fuzz::ratio(&uppercase_narration, keyword);
             if ratio > 82 {
                 // if comparism is pretty high return the role
                 return Some(*role);
@@ -174,13 +191,17 @@ impl TransactionCategorizer {
         }
     }
 
-    // now the actual thing
-    pub fn analyze_raw_statment(&self, raw: RawStatement) -> ParsedTransaction {
+    // Major logic, Based on all the defined functions
+    pub fn analyze_raw_statment(
+        &self,
+        raw: RawStatement,
+        user_type: TaxEntity,
+    ) -> ParsedTransaction {
         // check if the transaction is a charge
         let check = self.charge(&raw.narration);
 
         // break down the narration of the transaction
-        let narration_words: Hashset<String> = &raw
+        let narration_words: HashSet<String> = &raw
             .narration
             .to_uppercase()
             .split(|c: char| !c.is_alphanumeric())
@@ -189,7 +210,57 @@ impl TransactionCategorizer {
             .collect();
 
         // layer by layer we check, first a pattern? no then keyword?
-        let (role, confidence) = self.layer_processor(&narration_words, &raw.narration);
+        let (mut role, confidence) = self.layer_processor(&narration_words, &raw.narration);
+
+        // A lot of checks has to happen here
+
+        match role {
+            TransactionRole::Salary => {
+                if raw.amount.is_sign_negative() {
+                    match user_entity {
+                        PIT => role = TransacationRole::PersonalExp,
+                        LLC => role = TransactionRole::BusinessExp,
+                    }
+                }
+            }
+
+            TransactionRole::Utilities => {
+                // Utilities are always Debits (Expenses).
+                if raw.amount.is_sign_positive() {
+                    role = TransactionRole::TaxExempt; // Refund
+                }
+            }
+
+            TransactionRole::Rent => {
+                if raw.amount.is_sign_negative() {
+                    // Paying Rent
+                    match user_entity {
+                        // PIT: It needs to apply the special 20% Relief logic
+                        TaxEntity::PIT => role = TransactionRole::Rent,
+
+                        // LLC: It is just a standard operating expense
+                        TaxEntity::LLC => role = TransactionRole::BusinessExp,
+                    }
+                } else {
+                    // Receiving Rent (Positive)
+                    role = TransactionRole::Income;
+                }
+            }
+
+            _ => {} // any other roles behave normally
+        }
+
+        // if lets say the person pays salary from their personal account to driver or cleaner
+        // it is has to be a debit(negative) and it is a personal expense, not under taxExempt
+        if role == TransactionRole::Income && raw.amount.is_sign_negative() {
+            role = TransactionRole::PersonalExp;
+        }
+
+        // this is for businesses."Reversal of PHCN Bill" (Credit) is not an expense
+        if role == TransactionRole::BusinessExp && raw.amount.is_sign_positive() {
+            role = TransactionRole::TaxExempt;
+        }
+
         let parsed = ParsedTransaction {
             amount: raw.amount,
             narration: raw.narration,
@@ -200,22 +271,22 @@ impl TransactionCategorizer {
         };
     }
 
-    // layer by layer we check, first a pattern? no then keyword? fuzzy? ai then
+    // layer by layer we check, first a pattern? no then keyword? fuzzy? ai last!
     // you could use coR here but that is overkill
-    fn layer_processor(&self, words: &HashSet<String>, narration: &str) -> (TransactionRole, i32) {
+    fn layer_processor(&self, words: &HashSet<String>, narration: &str) -> (TransactionRole, u32) {
         if let Some(process) = analyze_pattern(words) {
-            Some(process, 100)
+            return (process, 100);
         }
 
         if let Some(process) = analyze_keywords(words) {
-            Some(process, 100)
+            return (process, 100);
         }
 
         if let Some(process) = fuzzy_checker(narration) {
-            Some(process, 100)
+            return (process, 100);
         }
 
         // if all failes then transaction unknown, ai handle it
-        (transaction::unknown, 0)
+        (TransactionRole::unknown, 0)
     }
 }
