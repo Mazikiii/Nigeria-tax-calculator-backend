@@ -1,34 +1,38 @@
+use crate::domain::entities::{ParserError, RawStatement};
+use crate::domain::ports::StatementParser;
 use async_trait::async_trait;
-use domain::entities::{ParserError, RawStatement};
-use domain::ports; // contains the interface that has parses and process, template defined
 use lopdf::Document;
-use rust_decimals::Decimal;
+use rust_decimal::Decimal;
 use std::collections::BTreeMap;
 
 // i need something that works as coordination to identify keywords in columns
 // so to pinpoint the position and word i'll define field x, y and text
+// THE GRID STRUCTURE
+
+/// represent a single word/phrase found in the pdf with its exact position
 #[derive(Debug, Clone)]
-struct column_coordinate {
-    x: f32,
-    y: f32,
+struct TextItem {
     text: String,
-}
-
-// i need to identify rows with y axies, Y=500.1` and `Y=500.2` are on the Same Row
-// so i need to be getting rows and comparing with the column detector so i identify the words
-//
-#[derive(Debug, Clone)]
-struct row_identifier {
+    x: f64,
     y: f64,
-    row_storage: Vec<column_coordinate>,
 }
 
-// based on the row and column identification we need hold the layout
-// that we need for rawstatement
-#[derive(Debug, Clone)]
-struct TableLayout {
-    x_date_col_start: f64,
-    x_date_col_end: f64,
-    x_narration_col_start: f64,
-    x_narration_col_end: f64,
+/// represent a detected Row in the visual table
+#[derive(Debug)]
+struct TableRow {
+    y_position: f64,
+    items: Vec<TextItem>,
 }
+
+/// stores the discovered layout rules for A specific file.
+#[allow(dead_code)]
+struct LayoutRules {
+    date_col_x_start: f64,
+    date_col_x_end: f64,
+    narration_col_x_start: f64,
+    narration_col_x_end: f64,
+}
+
+// i need to to implement some sort of adapter
+
+pub struct PdfParserAdapter;

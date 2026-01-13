@@ -72,6 +72,7 @@ impl TransactionCategorizer {
                             "tax_exempt" => TransactionRole::TaxExempt,
                             "deduction" => TransactionRole::Deduction,
                             "relief" => TransactionRole::Relief,
+                            "personal_exp" => TransactionRole::PersonalExp,
                             _ => TransactionRole::Unknown,
                         }
                     }
@@ -138,12 +139,12 @@ impl TransactionCategorizer {
         let mut found_roles = HashSet::new();
 
         for word in words {
-            if let role = self.keywords_container.get(role) {
-                found_words.insert(role);
+            if let Some(role) = self.keywords_container.get(word) {
+                found_roles.insert(*role);
             }
         }
 
-        if found_words.len() == 1 {
+        if found_roles.len() == 1 {
             return Some(found_roles.drain().next().unwrap());
         } else {
             return None;
@@ -188,7 +189,7 @@ impl TransactionCategorizer {
             let ratio = fuzzywuzzy::fuzz::ratio(&uppercase_narration, keyword);
             if ratio > 82 {
                 // if comparism is pretty high return the role
-                fuzzy_roles.insert(*role)
+                fuzzy_roles.insert(*role);
             }
         }
         if fuzzy_roles.len() == 1 {
@@ -219,6 +220,9 @@ impl TransactionCategorizer {
                 TransactionRole::TaxExempt
             }
 
+            // if a PIT user receives money for something usually bought like groceries, treat as Income (Trading)
+            TransactionRole::PersonalExp if amount.is_sign_positive() => TransactionRole::Income,
+
             _ => role,
         }
     }
@@ -230,14 +234,17 @@ impl TransactionCategorizer {
                 TransactionRole::BusinessExp
             }
 
-            // Rent inflow is revenue
+            // rent inflow is revenue
             TransactionRole::Rent if amount.is_sign_positive() => TransactionRole::Income,
 
-            // Expense inflow is refund
-            TransactionRole::Utilities | TransactionRole::BusinessExp
+            // utilities inflow is likely a refund
+            TransactionRole::Utilities if amount.is_sign_positive() => TransactionRole::TaxExempt,
+
+            // if an LLC receives money for PersonalExp like food items etc or BusinessExp like Fuel, it is Income
+            TransactionRole::BusinessExp | TransactionRole::PersonalExp
                 if amount.is_sign_positive() =>
             {
-                TransactionRole::TaxExempt
+                TransactionRole::Income
             }
 
             _ => role,
@@ -280,23 +287,23 @@ impl TransactionCategorizer {
             date: raw.date,
         }
     }
-}
 
-// layer by layer we check, first a pattern? no then keyword? fuzzy? ai last!
-// you could use coR here but that is overkill
-fn layer_processor(&self, words: &HashSet<String>, narration: &str) -> (TransactionRole, u32) {
-    if let Some(process) = self.analyze_pattern(words) {
-        return (process, 100);
+    // layer by layer we check, first a pattern? no then keyword? fuzzy? ai last!
+    // you could use coR here but that is overkill
+    fn layer_processor(&self, words: &HashSet<String>, narration: &str) -> (TransactionRole, u32) {
+        if let Some(process) = self.analyze_pattern(words) {
+            return (process, 100);
+        }
+
+        if let Some(process) = self.analyze_keywords(words) {
+            return (process, 100);
+        }
+
+        if let Some(process) = self.fuzzy_checker(narration) {
+            return (process, 100);
+        }
+
+        // if all failes then transaction unknown, ai handle it
+        (TransactionRole::Unknown, 0)
     }
-
-    if let Some(process) = self.analyze_keywords(words) {
-        return (process, 100);
-    }
-
-    if let Some(process) = self.fuzzy_checker(narration) {
-        return (process, 100);
-    }
-
-    // if all failes then transaction unknown, ai handle it
-    (TransactionRole::Unknown, 0)
 }

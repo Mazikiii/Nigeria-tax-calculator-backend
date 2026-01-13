@@ -16,7 +16,12 @@
         "BASIC PAY",
         "13TH MONTH",
         "UPFRONT",
-        "ARREARS"
+        "ARREARS",
+        "IPPIS",
+        "SUBEB",
+        "TESCOM",
+        "LAGESC",
+        "LASG_PAY"
       ],
       "patterns": [
         ["STAFF", "SAL"],
@@ -31,7 +36,9 @@
         ["SEPTEMBER", "PAY"],
         ["OCTOBER", "PAY"],
         ["NOVEMBER", "PAY"],
-        ["DECEMBER", "PAY"]
+        ["DECEMBER", "PAY"],
+        ["FED", "GOVT", "PAY"],
+        ["STATE", "GOVT", "PAY"]
       ]
     },
     "DIVIDEND": {
@@ -47,7 +54,10 @@
         "INTEREST",
         "CAPITAL GAIN",
         "PROFIT SHARE",
-        "UNIT TRUST"
+        "UNIT TRUST",
+        "EDC",
+        "UNITED CAPITAL",
+        "PRUDENTIAL"
       ],
       "patterns": [
         ["ARM", "INV"],
@@ -56,7 +66,12 @@
         ["MERISTEM", "REGISTRARS"],
         ["AFRINVEST", "SEC"],
         ["CARDINAL", "STONE"],
-        ["VETIVA", "CAPITAL"]
+        ["VETIVA", "CAPITAL"],
+        ["AFRICA", "PRUDENTIAL"],
+        ["FIRST", "REGISTRARS"],
+        ["CORONATION", "REGISTRARS"],
+        ["GTL", "REGISTRARS"],
+        ["PAC", "CAPITAL"]
       ]
     },
     "FREELANCE": {
@@ -74,7 +89,10 @@
         "WORLDREMIT",
         "SENDWAVE",
         "REMITLY",
-        "LEMONADE"
+        "LEMONADE",
+        "TOPTAL",
+        "ANDELA",
+        "CROSSOVER"
       ],
       "patterns": [
         ["WIRE", "INFLOW"],
@@ -110,7 +128,8 @@
       "patterns": [
         ["TRAINING", "ALLOWANCE"],
         ["POCKET", "MONEY"],
-        ["SIWES", "PAY"]
+        ["SIWES", "PAY"],
+        ["CORPS", "MEMBER"]
       ]
     },
     "BONUS": {
@@ -128,7 +147,9 @@
         "BETNAIJA",
         "SPORTYBET",
         "MSPORT",
-        "1XBET"
+        "1XBET",
+        "BETKING",
+        "NAIRABET"
       ],
       "patterns": [
         ["PERFORMANCE", "PAY"],
@@ -136,7 +157,6 @@
       ]
     }
   },
-
   "tax_exempt": {
     "GIFT": {
       "keywords": [
@@ -154,12 +174,14 @@
         "DASHO",
         "GOODWILL",
         "CHARITY",
-        "NGO"
+        "NGO",
+        "GIVINGS"
       ],
       "patterns": [
         ["FAMILY", "SUPPORT"],
         ["KEEP", "CHANGE"],
-        ["CHURCH", "OFFERING"]
+        ["CHURCH", "OFFERING"],
+        ["MOSQUE", "DONATION"]
       ]
     },
     "REFUND": {
@@ -203,13 +225,18 @@
         "THRIFT",
         "AJO",
         "ESUSU",
-        "COOPERATIVE"
+        "COOPERATIVE",
+        "BAMBOO",
+        "RISEVEST",
+        "CHAKA",
+        "TROVE"
       ],
       "patterns": [
         ["FIXED", "DEPOSIT"],
         ["TREASURY", "BILL"],
         ["MUTUAL", "FUND"],
-        ["TBILL", "SUB"]
+        ["TBILL", "SUB"],
+        ["SAVINGS", "GOAL"]
       ]
     },
     "PROCEEDS": {
@@ -228,7 +255,6 @@
       "keywords": [
         "LOAN",
         "DISBURSE",
-        "CREDIT",
         "ADVANCE",
         "OVERDRAFT",
         "FACILITY",
@@ -241,11 +267,40 @@
         "BRANCH",
         "RENMONEY",
         "LAPO",
-        "MICROFINANCE"
+        "MICROFINANCE",
+        "KWIKMONEY",
+        "QUICKCHECK",
+        "AIROPAY"
       ],
       "patterns": [
         ["PAGE", "FINANCIALS"],
         ["KUDA", "MONEY"]
+      ]
+    },
+    "PUBLIC_TRANSPORT": {
+      "keywords": [
+        "BRT",
+        "LAMATA",
+        "COWRY",
+        "TRAIN",
+        "NRC",
+        "FERRY",
+        "LAGFERRY",
+        "OKADA",
+        "KEKE",
+        "DANFO",
+        "GUO",
+        "CHISCO",
+        "GIGM",
+        "PEACE",
+        "YOUNG",
+        "ABC"
+      ],
+      "patterns": [
+        ["COWRY", "CARD"],
+        ["TRANSPORT", "FARE"],
+        ["BUS", "TICKET"],
+        ["TRAIN", "TICKET"]
       ]
     }
   },
@@ -269,7 +324,9 @@
         ["HALF", "YEAR"],
         ["AGENT", "FEE"],
         ["AGREEMENT", "FEE"],
-        ["CAUTION", "FEE"]
+        ["CAUTION", "FEE"],
+        ["ESTATE", "LEVY"],
+        ["ESTATE", "DUES"]
       ]
     },
     "LEASE": {
@@ -300,9 +357,18 @@
         "TUTOR",
         "LESSON",
         "BOOKS",
-        "UNIFORM"
+        "UNIFORM",
+        "BOOKSHOP",
+        "LIBRARY",
+        "JAMB",
+        "WAEC",
+        "NECO"
       ],
-      "patterns": [["HIGH", "SCHOOL"]]
+      "patterns": [
+        ["HIGH", "SCHOOL"],
+        ["CATHOLIC", "SCHOOL"],
+        ["INTL", "SCHOOL"]
+      ]
     },
     "TUITION": {
       "keywords": [
@@ -320,7 +386,9 @@
         "TRAINING",
         "CERTIFICATION",
         "COURSERA",
-        "UDEMY"
+        "UDEMY",
+        "ALT SCHOOL",
+        "ALX"
       ],
       "patterns": [
         ["SCH", "FEES"],
@@ -343,14 +411,21 @@
         "CRUSADER",
         "LEADWAY",
         "SIGMA",
-        "VERITAS"
+        "VERITAS",
+        "PAL",
+        "TRUSTFUND",
+        "NLPC",
+        "APT",
+        "AXA"
       ],
       "patterns": [
         ["STANBIC", "PENSION"],
         ["ARM", "PENSION"],
         ["OAK", "PENSION"],
         ["PREMIUM", "PENSION"],
-        ["FCMB", "PENSION"]
+        ["FCMB", "PENSION"],
+        ["ACCESS", "PENSION"],
+        ["FIDELITY", "PENSION"]
       ]
     },
     "NHF": {
@@ -371,7 +446,10 @@
         "AVON",
         "AIICO",
         "NONO",
-        "RODAN"
+        "RODAN",
+        "SWIFT",
+        "REDCARE",
+        "MEDIPLAN"
       ],
       "patterns": [
         ["HEALTH", "INS"],
@@ -381,7 +459,16 @@
       ]
     },
     "LASG": {
-      "keywords": ["LASG", "LIRS", "REVENUE", "LUC", "RADIO", "LGA", "LCDA"],
+      "keywords": [
+        "LASG",
+        "LIRS",
+        "REVENUE",
+        "LUC",
+        "RADIO",
+        "LGA",
+        "LCDA",
+        "AGENCY"
+      ],
       "patterns": [
         ["LAGOS", "STATE"],
         ["LAND", "USE"],
@@ -409,6 +496,15 @@
         ["DIRECT", "ASSESS"],
         ["STAMP", "DUTY"],
         ["EDUCATION", "TAX"]
+      ]
+    },
+    "BANK_CHARGES": {
+      "keywords": ["SMS", "MAINTENANCE", "ALERT", "TOKEN"],
+      "patterns": [
+        ["ACCT", "MAINT"],
+        ["SMS", "CHG"],
+        ["CARD", "MAINT"],
+        ["MONTHLY", "FEE"]
       ]
     }
   },
@@ -440,6 +536,27 @@
       "patterns": [
         ["GOOGLE", "CLOUD"],
         ["MICROSOFT", "AZURE"]
+      ]
+    },
+    "SOFTWARE": {
+      "keywords": [
+        "ADOBE",
+        "MICROSOFT",
+        "GOOGLE",
+        "SLACK",
+        "ZOOM",
+        "ATLASSIAN",
+        "JIRA",
+        "GITHUB",
+        "GITLAB",
+        "NOTION",
+        "FIGMA",
+        "CANVA"
+      ],
+      "patterns": [
+        ["G", "SUITE"],
+        ["GOOGLE", "WORKSPACE"],
+        ["OFFICE", "365"]
       ]
     },
     "FIVERR_EXP": {
@@ -516,7 +633,9 @@
         "NNPC",
         "SHELL",
         "CONOIL",
-        "MRS"
+        "MRS",
+        "ARDROVA",
+        "FORTE"
       ],
       "patterns": [
         ["GIG", "LOGISTICS"],
@@ -540,11 +659,48 @@
         "METER",
         "TOKEN",
         "UNIT",
-        "RECHARGE"
+        "RECHARGE",
+        "STARTIMES",
+        "GOTV",
+        "DSTV",
+        "SHOWMAX"
       ],
       "patterns": [
         ["IKEJA", "ELECTRIC"],
-        ["EKO", "ELECTRIC"]
+        ["EKO", "ELECTRIC"],
+        ["ABUJA", "ELECTRIC"],
+        ["ENUGU", "ELECTRIC"],
+        ["KANO", "ELECTRIC"],
+        ["PORT", "HARCOURT"],
+        ["JOS", "ELECTRIC"],
+        ["KADUNA", "ELECTRIC"],
+        ["BENIN", "ELECTRIC"],
+        ["YOLA", "ELECTRIC"]
+      ]
+    },
+    "ENERGY_RENEWABLE": {
+      "keywords": [
+        "SOLAR",
+        "INVERTER",
+        "BATTERY",
+        "PANEL",
+        "LUMOS",
+        "ARNERGY",
+        "OOU",
+        "ZOLA"
+      ],
+      "patterns": [
+        ["SUN", "KING"],
+        ["SOLAR", "POWER"],
+        ["CLEAN", "ENERGY"]
+      ]
+    },
+    "CNG_LPG": {
+      "keywords": ["CNG", "LPG", "GAS", "CYLINDER"],
+      "patterns": [
+        ["NIPCO", "GAS"],
+        ["GREEN", "GAS"],
+        ["COOKING", "GAS"]
       ]
     },
     "PAYMENT_GATEWAYS": {
@@ -560,9 +716,90 @@
         "OPAY",
         "PALMPAY",
         "PAGA",
-        "VOGUEPAY"
+        "VOGUEPAY",
+        "KONGAPAY",
+        "CELLULANT"
       ],
       "patterns": []
+    }
+  },
+  "personal_exp": {
+    "DOMESTIC_STAFF": {
+      "keywords": [
+        "COOK",
+        "CLEANER",
+        "DRIVER",
+        "NANNY",
+        "MAIGUARD",
+        "GARDENER",
+        "STEWARD"
+      ],
+      "patterns": [
+        ["GATE", "MAN"],
+        ["HOUSE", "HELP"],
+        ["SECURITY", "GUARD"]
+      ]
+    },
+    "GROCERIES": {
+      "keywords": [
+        "GROCERY",
+        "MARKET",
+        "FOOD",
+        "SHOPRITE",
+        "SPAR",
+        "JUSTRITE",
+        "GAME",
+        "SUPERMARKET",
+        "PROVISIONS",
+        "BREAD",
+        "MEAT",
+        "FISH",
+        "YAM",
+        "RICE",
+        "BEANS"
+      ],
+      "patterns": [
+        ["PRINCE", "EBEANO"],
+        ["FOOD", "STUFF"],
+        ["ADDIDE", "STORE"],
+        ["SUPER", "MART"]
+      ]
+    },
+    "PHARMA": {
+      "keywords": [
+        "PHARMACY",
+        "DRUG",
+        "MEDICINE",
+        "TABLET",
+        "SYRUP",
+        "INJECTION",
+        "EMZOR",
+        "FIDSON",
+        "MAY",
+        "BAKER"
+      ],
+      "patterns": [
+        ["MEDPLUS", "PHARMACY"],
+        ["HEALTHPLUS", "PHARMACY"],
+        ["NET", "PHARMACY"],
+        ["ALPHA", "PHARMACY"]
+      ]
+    },
+    "BABY_PRODUCTS": {
+      "keywords": [
+        "BABY",
+        "DIAPER",
+        "PAMPERS",
+        "WIPES",
+        "FORMULA",
+        "CERELAC",
+        "NAN",
+        "APTAMIL"
+      ],
+      "patterns": [
+        ["BABY", "FOOD"],
+        ["BABY", "SHOP"]
+      ]
     }
   }
 }
