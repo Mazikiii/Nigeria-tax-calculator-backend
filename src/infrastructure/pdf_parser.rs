@@ -29,6 +29,7 @@ struct TableRow {
 
 /// stores the discovered layout rules for A specific file.
 #[allow(dead_code)]
+
 struct LayoutRules {
     date_col_x_start: f64,
     date_col_x_end: f64,
@@ -67,7 +68,8 @@ impl StatementParser for PdfParserAdapter {
     }
 }
 
-// HELPERs that processes a pdf
+// helpers that processes a pdf
+
 impl PdfParserAdapter {
     /// learnt about BT, ET, Tm, Td, Tj, TJ
     /// look into `lopdf::content::Content`, `Operation`.
@@ -142,8 +144,50 @@ impl PdfParserAdapter {
         Ok(pdf_items)
     }
 
+    ///  grouping items by Y-coordinate.
     fn cluster_rows(&self, _items: Vec<TextItem>) -> Vec<TableRow> {
-        vec![]
+        let mut rows: Vec<TableRow> = Vec::new(); // storing rows in vec
+        let threshold = 3.0;
+
+        // how would i sort the TextItems based on y coordinate
+        // we can get it by looking at item.y
+        // so want to use quick sort or selection sort?
+        // since i can't use .sort() on floats(because of NaN) use .sort_by()
+        // i use b.y vs a.y because i need it sort in decending order
+        // based on this sorting i will iterate from the very top so no need for hardcoding y=800
+        _items.sort_by(|a, b| b.y.partial_cmp(&a.y).unwrap_or(std::cmp::Ordering::Equal));
+
+        for current_row in _items {
+            let mut new_row = false;
+            let last_row = row.last_mut(); // get the last item in the storage, we need it to compare
+
+            if let Some(last_row) = last_row {
+                if (last_row.y_position - current_row.y).abs() < threshold {
+                    last_row.items.push(current_row); // rows is a collection of TextItems
+                    new_row = false;
+                }
+            }
+
+            if new_row {
+                rows.push(
+                    (TableRow {
+                        y_position: current_row.y,
+                        items: vec![current_row], // start the collection with this row (allocates a new vector for THIS row)
+                    }),
+                );
+                new_row = true;
+            }
+        }
+
+        // i arranged the rows by decending order because thats how a pdf flows in terms of
+        // y axis, but i can not forget about the x axis, that is important
+        // from the beginning of the pdf down x axis flows in asending order compared to y axis
+        // i still have to sort that very collection based on the x-axis, this changes positioning
+        for row in &mut rows {
+            row.items
+                .sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal))
+        }
+        rows
     }
 
     fn detect_layout(&self, _rows: &[TableRow]) -> Result<LayoutRules, ParserError> {
