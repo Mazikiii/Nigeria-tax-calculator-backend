@@ -77,11 +77,13 @@ impl StatementParser for PdfParserAdapter {
 
         let rows = self.cluster_rows(raw_items);
 
-        let layout = self.detect_layout(&rows)?;
+        let (layout, header_y) = self.detect_layout(&rows)?;
 
         let mut results = Vec::new();
         for row in rows {
-            if self.is_header_row(&row) {
+            // remember that in pdfs y starts from the highest number and decreases as it goes down
+            // anything above the header is meta data thats useless to me rn
+            if row.y_position >= header_y {
                 continue;
             }
 
@@ -219,7 +221,7 @@ fn cluster_rows(&self, _items: Vec<TextItem>) -> Vec<TableRow> {
 
 ///finding the headers.
 /// i work with the returned value of cluster_row function and identify the layout and fix it accordingly using the LayoutRule
-fn detect_layout(&self, _rows: &Vec<TableRow>) -> Result<LayoutRules, ParserError> {
+fn detect_layout(&self, _rows: &Vec<TableRow>) -> Result<(LayoutRules, f64), ParserError> {
     let mut markers = Vec::new();
 
     // okay so i want to search the first 40 rows
@@ -294,7 +296,9 @@ fn detect_layout(&self, _rows: &Vec<TableRow>) -> Result<LayoutRules, ParserErro
 
         // this covers all my cases
         if has_date && has_money && has_narr {
-            // Sort markers Left-to-Right by X coordinate
+            // sort markers Left-to-Right by X coordinate, why? i don't know the order the words appeared in the raw pdf parsed
+            // and i need the order to be correct to accuratly get the start and end of each column
+            // sorting like this ensures that `markers[i+1]` is actually the neighbor to the right
             markers.sort_by(|a, b| a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal));
 
             // need to initialize the layoutRule but fill everything with default values or state
@@ -312,7 +316,7 @@ fn detect_layout(&self, _rows: &Vec<TableRow>) -> Result<LayoutRules, ParserErro
                 counterparty_col_x_start: None,
                 counterparty_col_x_end: None,
             };
-            // 3. Iterate and assign boundaries based on neighbors
+            //  iterate and assign boundaries based on neighbors
             for i in 0..markers.len() {
                 let current = &markers[i];
 
@@ -323,7 +327,7 @@ fn detect_layout(&self, _rows: &Vec<TableRow>) -> Result<LayoutRules, ParserErro
                     0.0
                 };
 
-                // determine end by Looking at the NEXT marker
+                // determine end by Looking at the next marker
                 let end_x = if i + 1 < markers.len() {
                     let next_marker = &markers[i + 1];
                     if next_marker.x > 20.0 {
@@ -374,7 +378,7 @@ fn detect_layout(&self, _rows: &Vec<TableRow>) -> Result<LayoutRules, ParserErro
                     }
                 }
             }
-            return Ok(rules);
+            return Ok(rules, rows.y_position);
         }
     }
 
@@ -382,9 +386,153 @@ fn detect_layout(&self, _rows: &Vec<TableRow>) -> Result<LayoutRules, ParserErro
 }
 
 fn map_row_to_statement(&self, _row: &TableRow, _layout: &LayoutRules) -> Option<RawStatement> {
-    None
-}
+    // I have a valid layout rule that has coordinates
+    // so how does row and layout work hand in hand
+    // what does row actually contain? a y position and collect Of TextItems(x,y, item)
+    // go into each row and just use the layout rule coordinates to drag out the content, but i have to begin this after the header row
+    // i first do need to set default containers that would be passed to raw statment
+    let mut date_str = String::new();
+    let mut narration_str = String::new();
+    let mut cp_str = String::new();
 
-fn is_header_row(&self, _row: &TableRow) -> bool {
-    false
+    // for amounts i need to collect them as strings first because they might be fragmented
+    let mut debit_str = String::new();
+    let mut credit_str = String::new();
+    let mut amount_str = String::new();
+    let mut amount_is_negative = false;
+
+    //now that i'm on the row after the header what now?
+    // i want to confirm if the x position of that word is greater than or equal various layout
+    // if it is greater than or equal to the layouts rule x_start && less than or equal to x_end then allocate the value
+    // go into each row and iterate items
+    for item in &_row.items {
+        let item_x_pos = item.x;
+        let actual_item = item.text.trim();
+
+        if actual_item.is_empty() {
+            continue;
+        }
+
+        // lets go one column at a time
+        // date filler
+        if item_x_pos >= _layout.date_col_x_start && item_x_pos <= _layout.date_col_x_end {
+            // there may be multiple items that fall between the x_end and y_end
+            // so its better to push the string and a space incase there are multiple things
+            date_str.push_str(actual_item);
+            date_str.push_str(" ");
+        }
+        // narration filler
+        else if item_x_pos >= _layout.narration_col_x_start
+            && item_x_pos <= _layout.narration_col_x_end
+        {
+            narration_str.push_str(actual_item);
+            narration_str.push_str(" ");
+        }
+
+        // remember that the LayoutRules struct has some options? like something can exist
+        // or not exist in that particular statment
+        // counterparty is one
+        if let (Some(start), Some(end)) = (
+            _layout.counterparty_col_x_start,
+            _layout.counterparty_col_x_end,
+        ) {
+            if item_x_pos >= start && item_x_pos <= end {
+                cp_str.push_str(actual_item);
+                cp_str.push_str(" ");
+            }
+        }
+
+        // then theres Amount, i have to be careful how i collect numbers
+        // so i rather make sure i get all the numbers (bits under the y section of amount column)
+
+        if let (Some(start), Some(end)) = (_layout.amount_col_x_start, _layout.amount_col_x_end) {
+            // i want to put the bits togetther before allocating it
+            if item_x_pos >= start && item_x_pos <= end {
+                amount_str.push_str(actual_item);
+
+                if item.text.contains("-")
+                    || item.text.contains("DR")
+                    || item.text.contains("Dr")
+                    || item.text.contains("dr")
+                {
+                    amount_is_negative = true;
+                }
+            }
+        }
+
+        // now finally for debit and credit
+        // similar to amount
+        // Debit first
+        if let (Some(start), Some(end)) = (_layout.debit_col_x_start, _layout.debit_col_x_end) {
+            if item_x_pos >= start && item_x_pos <= end {
+                debit_str.push_str(actual_item);
+            }
+        }
+
+        // Credit col
+        if let (Some(start), Some(end)) = (_layout.credit_col_x_start, _layout.credit_col_x_end) {
+            if item_x_pos >= start && item_x_pos <= end {
+                credit_str.push_str(actual_item);
+            }
+        }
+    }
+
+    // now finally calculate the money
+    // just incase i need to clean non numeric chars that i may not know about
+    // .chars is iterating and is_digit makes sure a character is a digit. When you iterate you collect
+    let mut amount_val = Decimal::ZERO;
+    let mut found_money = false;
+
+    if !amount_str.is_empty() {
+        let clean_money: String = amount_str
+            .chars()
+            .filter(|c| c.is_digit(10) || *c == '.')
+            .collect();
+        if let Ok(val) = clean_money.parse::<Decimal>() {
+            if amount_is_negative {
+                amount_val = -val;
+            } else {
+                amount_val = val;
+            }
+            found_money = true;
+        }
+    }
+
+    if !debit_str.is_empty() {
+        let clean_debit: String = debit_str
+            .chars()
+            .filter(|c| c.is_digit(10) || *c == '.')
+            .collect();
+        if let Ok(val) = clean_debit.parse::<Decimal>() {
+            amount_val -= val;
+            found_money = true;
+        }
+    }
+
+    if !credit_str.is_empty() {
+        let clean_credit: String = credit_str
+            .chars()
+            .filter(|c| c.is_digit(10) || *c == '.')
+            .collect();
+        if let Ok(val) = clean_credit.parse::<Decimal>() {
+            amount_val += val;
+            found_money = true;
+        }
+    }
+
+    // validation to make sure its not a footer
+    if date_str.trim().is_empty() || !found_money {
+        return None;
+    }
+
+    Some(RawStatement {
+        date: date_str.trim().to_string(),
+        narration: narration_str.trim().to_string(),
+        amount: amount_val,
+        counterparty: if cp_str.is_empty() {
+            None
+        } else {
+            Some(cp_str.trim().to_string())
+        },
+    })
 }
