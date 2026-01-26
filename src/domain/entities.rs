@@ -39,6 +39,15 @@ pub struct ParsedTransaction {
     pub date: String,
 }
 
+// after the calculator has gone through a collection of transaction its final result should be
+pub struct CalculationResult {
+    // Delta (means change) a statement causes
+    pub taxable_income_delta: Decimal, // (Income - Expenses/Reliefs)
+    pub total_credit_flow: Decimal,    // keeping track of the raw inflows
+    pub is_valid_for_use: bool, // if the statement unknown transaction is greater than 30% it isn't reliable
+    pub unknown_transactions: Vec<ParsedTransaction>,
+}
+
 // there are two major entities that have seperate logic
 #[derive(Debug, Clone)]
 pub enum TaxEntity {

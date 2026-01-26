@@ -9,5 +9,5 @@ trait StatementParser: Send + Sync {
 #[async_trait]
 trait ProcessedStatementSaver: Send + Sync {
     // saves the processed statement to db
-    async fn save_batch(&self, txs: Vec<ParsedTransaction>) -> Result<(), save_error>;
+    async fn save_batch(&self, txs: Vec<ParsedTransaction>) -> Result<(), Err>;
 }
