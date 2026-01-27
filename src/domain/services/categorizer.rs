@@ -3,11 +3,12 @@
 use crate::domain::entities::{
     LexiconFile, ParsedTransaction, RawStatement, TaxEntity, TransactionRole,
 };
+use rayon::prelude::*;
 use regex::Regex;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::{HashMap, HashSet};
-use std::fs;
+use std::fs; // this is particularly for handling multiple transactions categorization in parallelism
 
 // First i need to rule out whether the transaaction is a charge VAT or Stamp duties
 // there are going to be about four layers in this logic
@@ -249,6 +250,17 @@ impl TransactionCategorizer {
 
             _ => role,
         }
+    }
+
+    pub fn analyze_batch_parallel(
+        &self,
+        statements: Vec<RawStatement>,
+        user_type: TaxEntity,
+    ) -> Vec<ParsedTransaction> {
+        statements
+            .into_par_iter() // split the work across CPU cores
+            .map(|raw| self.analyze_raw_statment(raw, user_type))
+            .collect() // collect results in order
     }
 
     // now the actual thing

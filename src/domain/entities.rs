@@ -68,7 +68,56 @@ pub enum TransactionRole {
     Relief,      // specific "tax Credit" categories (Rent relief - 20%)
     Deduction,   // statutory outflows (Pension, NHIS, NHF)
     PersonalExp, // the tax man does not care about this
-    Unknown,     // Vague narrations requiring user input
+    Unknown,     // vague narrations requiring user input
+}
+
+// more like an uptodate tracker for each PIT users
+pub struct PitTaxState {
+    pub user_id: String,
+    pub tax_year: u32, // this is to keep track of what year i am working with
+    pub taxable_income_ytd: Decimal,
+    pub rent_relief_used_ytd: Decimal, // i need to keep track of the rent relief applied per year
+}
+
+pub struct LLCTaxState {
+    pub user_id: String,
+    pub tax_year: u32,
+    pub taxable_income_ytd: Decimal,
+    pub business_expenses_ytd: Decimal,
+    pub development_levy_ytd: Decimal,
+}
+
+pub enum UserTaxState {
+    PIT(PitTaxState),
+    LLC(LLCTaxState),
+}
+
+// need a constructor for the various tax statess,(this is allowed in entites)
+impl LLCTaxState {
+    fn new(user_id: String, tax_year: u32) -> Self {
+        Self {
+            user_id,
+            tax_year,
+            taxable_income_ytd: Decimal::ZERO,
+            business_expenses_ytd: Decimal::ZERO,
+            development_levy_ytd: Decimal::ZERO,
+        }
+    }
+}
+
+impl PitTaxState {
+    pub fn new(user_id: String, tax_year: u32) -> Self {
+        Self {
+            user_id,
+            tax_year,
+            taxable_income_ytd: Decimal::ZERO,
+            rent_relief_used_ytd: Decimal::ZERO,
+            pension_deduction_ytd: Decimal::ZERO,
+            nhis_deduction_ytd: Decimal::ZERO,
+            nhf_deduction_ytd: Decimal::ZERO,
+            life_insurance_ytd: Decimal::ZERO,
+        }
+    }
 }
 
 // this is error handling for the pdf parser

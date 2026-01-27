@@ -2624,6 +2624,7 @@ dependencies = [
  "fuzzywuzzy",
  "lopdf 0.38.0",
  "pdf-extract",
+ "rayon",
  "regex",
  "ring",
  "rust_decimal",
