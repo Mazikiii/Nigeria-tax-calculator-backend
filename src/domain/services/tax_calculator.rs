@@ -33,10 +33,10 @@ impl TaxCalculator {
         let mut unknown_count = unknown_trans.len();
         let mut is_valid = true;
 
+        let mut updated_state = user_state.clone();
+
         match user_state {
             UserTaxState::PIT(pit_state) => {
-                let mut updated_state = pit_state.clone();
-
                 for txn in &statement {
                     if txn.role == TransactionRole::Unknown {
                         unknown_trans.push(txn.clone());
@@ -56,7 +56,7 @@ impl TaxCalculator {
                             let max_relief = dec!(500000);
                             let rent_paid = txn.amount.abs();
                             let applicable_relief = rent_paid * dec!(0.20);
-                            let remaining_relief = max_relief - updated_pit.rent_relief_used_ytd;
+                            let remaining_relief = max_relief - updated_state.rent_relief_used_ytd;
 
                             //  apply if there's room left
                             if remaining_relief > dec!(0) {
@@ -79,25 +79,10 @@ impl TaxCalculator {
                     }
                 }
 
-                let unknown_percentage = (unknown_count as f64 / total_trans_count as f64) * 100.0;
-                if unknown_percentage >= 30.0 {
-                    is_valid = false;
-                }
-
                 updated_pit.taxable_income_ytd += taxable_inc_delta;
-                return (
-                    CalculationResult {
-                        taxable_income_delta: taxable_inc_delta,
-                        total_credit_flow: total_credit_inflow,
-                        is_valid_for_use: is_valid,
-                        unknown_transactions: unknown_trans,
-                    },
-                    UserTaxState::PIT(updated_state),
-                );
             }
 
             UserTaxState::LLC(llc_state) => {
-                let mut updated_state = llc_state.clone();
                 for txn in &statement {
                     if txn.amount.is_sign_positive() {
                         total_credit_inflow += txn.amount;
@@ -105,6 +90,7 @@ impl TaxCalculator {
 
                     if txn.role == TransactionRole::Unknown {
                         unknown_trans.push(txn.clone());
+                        continue;
                     }
 
                     match txn.role {
@@ -114,6 +100,7 @@ impl TaxCalculator {
 
                         TransactionRole::BusinessExp => {
                             taxable_inc_delta -= txn.amount.abs();
+                            updated_llc.business_expenses_ytd += expense;
                         }
 
                         TransactionRole::Deduction => {
@@ -124,21 +111,21 @@ impl TaxCalculator {
                     }
                 }
 
-                let unknown_percentage = (unknown_count as f64 / total_trans_count as f64) * 100.0;
-                if unknown_percentage >= 30.0 {
-                    is_valid = false;
-                }
                 updated_pit.taxable_income_ytd += taxable_inc_delta;
-                return (
-                    CalculationResult {
-                        taxable_income_delta: taxable_inc_delta,
-                        total_credit_flow: total_credit_inflow,
-                        is_valid_for_use: is_valid,
-                        unknown_transactions: unknown_trans,
-                    },
-                    UserTaxState::LLC(updated_state),
-                );
             }
         }
+
+        let unknown_percentage = (unknown_count as f64 / total_trans_count as f64) * 100.0;
+        let is_valid = unknown_percentage < 30.0;
+
+        (
+            CalculationResult {
+                taxable_income_delta: taxable_inc_delta,
+                total_credit_flow: total_credit_inflow,
+                is_valid_for_use: is_valid,
+                unknown_transactions: unknown_trans,
+            },
+            updated_state,
+        )
     }
 }
