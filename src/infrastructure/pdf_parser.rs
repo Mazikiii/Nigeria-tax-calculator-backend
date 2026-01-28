@@ -66,9 +66,14 @@ struct Marker {
 // i need to to implement some sort of adapter
 pub struct PdfParserAdapter;
 
+impl PdfParserAdapter {
+    pub fn new() -> Self {
+        Self
+    }
+}
 #[async_trait]
 impl StatementParser for PdfParserAdapter {
-    async fn parse_pdf(&self, data: Vec<u8>) -> Result<Vec<RawStatement>, ParserError> {
+    async fn parse_pdf(&self, data: &mut Vec<u8>) -> Result<Vec<RawStatement>, ParserError> {
         let doc = Document::load_mem(&data).map_err(|_| ParserError::FileError)?;
 
         let raw_items = self.extract_text_items(&doc)?;
