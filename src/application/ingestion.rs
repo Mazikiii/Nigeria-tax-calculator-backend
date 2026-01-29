@@ -4,7 +4,6 @@
 use crate::domain::entities::{
     LLCTaxState, PITaxState, ParsedTransaction, TaxEntity, UserTaxState,
 };
-
 use crate::domain::services::categorizer::TransactionCategorizer;
 use crate::domain::tax_calculator::TaxCalculator;
 use crate::infrastructure::pdf_parser::PdfParserAdapter;
@@ -58,11 +57,17 @@ pub struct BatchProcessed {
 }
 
 // i need some sort of error type incase the statement processing fails
-#[debug(Debug)]
+#[derive(Debug)]
 pub enum ProcessorError {
     pdf_parsing_error(string),
 }
 
+// because of what i did in tax calculator(preview and finalize calculator), i want an enum to specify mode
+
+pub enum ProcessorMode{
+    Preview,
+    Final
+}
 //learn to construct structs
 // since i'm doing something like a facade i need to think of a structure
 // that embodies the processes happening, i want to Process a statement,
@@ -98,6 +103,8 @@ impl StatementProcessor {
         user_id: String,
         tax_type: TaxEntity,
         tax_year: u32,
+        mode: ProcessorMode,
+        user_uptodate_state: &UserTaxState
     ) -> Result<SingleStatementResult, ProcessingError> {
         //okay so i need to collect the inputs and associate them properly
         // the pdf data that is given goes into the statment parser
@@ -115,9 +122,16 @@ impl StatementProcessor {
             TaxEntity::LLC => UserTaxState::LLC(LLCTaxState::new(user_id.clone(), tax_year)),
         };
 
-        let (pdf_statement_calculator, user_state) = self
-            .statement_calculator
-            .calculate_statement(pdf_categorizer.clone(), &type_of_user);
+
+        let (pdf_statement_calculator, updated_status) = match ProcessorMode{
+                ProcessorMode::Preview => self
+                .statement_calculator
+                .preview_calculation(pdf_categorizer.clone(), &user_uptodate_state),
+                ProcessorMode::Final => self
+                .statement_calculator
+                .finalize_calculation(pdf_categorizer.clone(), &user_uptodate_state),
+            };
+
 
         // i need an id for each process that happens
         let process_id = uuid::Uuid::new_v4().to_string();
@@ -150,7 +164,9 @@ impl StatementProcessor {
     // then store valid and invalid statements seperatly
     // then use the struct BatchProcessed
     //
-    pub async fn batch_statement_processor(&self,)
+    pub async fn batch_statement_processor(&self, pdfs: Vec<Vec<u8>>,  user_id: String,
+    tax_type: TaxEntity,
+    tax_year: u32,) ->
 }
 
 
