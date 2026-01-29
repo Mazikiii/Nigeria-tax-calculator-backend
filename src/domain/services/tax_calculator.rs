@@ -21,7 +21,7 @@ impl TaxCalculator {
     }
 
     // identify possible inputs and output
-    pub fn calculate_statement(
+    fn calculate_statement(
         &self,
         statement: Vec<ParsedTransaction>,
         user_state: &UserTaxState,
@@ -127,5 +127,32 @@ impl TaxCalculator {
             },
             updated_state,
         )
+    }
+
+    // okay so why am i doing this, we use userstate to monitor how to apply relief which is responsible
+    // for the how the tax delta will move and the userstate holds other important things that
+    // will be applied to the gauge. I make use of the state and update it in the calculate_statement fn
+    // but what happens when a statement is rejected? the state it involved get invalid and should have never been added
+    // there is a state in the app that the user has to reject or accept statement but we
+    // need a mock data to work with at the point of preview i need the deltas to be correct
+    // so i know if a user accepts a statement review then i have to recalculate
+    // so i create two functions, one that doesn't return a delta at all only the CalculationResult
+    // and another that does recalculation based on all accepted statement now we use the delta because
+    // at the point of the user clicking on accept all statement is valid and they accept the report making the delta unchangable
+    pub fn preview_calculation(
+        &self,
+        statement: Vec<ParsedTransaction>,
+        user_state: &UserTaxState,
+    ) -> CalculationResult {
+        let (result, _) = self.calculate_statement(transactions, current_state);
+        result // notice what you're returning and you are throwing the delta away
+    }
+
+    pub fn finalize_calculation(
+        &self,
+        transactions: Vec<ParsedTransaction>,
+        current_state: &UserTaxState,
+    ) -> (CalculationResult, UserTaxState) {
+        self.calculate_statement(transactions, current_state) // notice what you're returning and you are adding the delta
     }
 }

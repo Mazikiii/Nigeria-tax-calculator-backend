@@ -17,9 +17,9 @@ use rust_decimal::Decimal;
 // can you think of a creational or structural or behavioural pattern for this?
 // facade, builder are the best fits
 
-// what is the final result i really want?
+// this is for valid statments
 #[derive(Debug, Clone)]
-pub struct StatementResult {
+pub struct ValidStatement {
     // i need a the id for this
     // i need to know the tax year
     // i need to know the inflow and data for the delta
@@ -27,9 +27,23 @@ pub struct StatementResult {
     pub statement_id: String,
     pub taxable_income_delta: Decimal,
     pub total_credit_flow: Decimal,
-    pub transaction_count: usize,
-    pub unknown_count: usize,
     pub unknown_transactions: Vec<ParsedTransaction>,
+    pub unknown_count: usize,
+}
+
+// so some transactions may possible have > 30% in unknowns
+#[derive(Debug)]
+pub struct InvalidStatement {
+    pub statement_id: String,
+    pub taxable_income_delta: Decimal,
+    pub total_credit_flow: Decimal,
+    pub unknown_transactions: Vec<ParsedTransaction>,
+    pub unknown_count: usize,
+}
+
+pub enum SingleStatmentResult {
+    ValidStatement,
+    InvalidStatement,
 }
 
 // when a batch of pdfs are uploaded there a possiblility that some pdfs had alot
@@ -38,19 +52,9 @@ pub struct BatchProcessed {
     // need an id for the batch
     // i need to store the list of okay statements
     // i need to store the list of not okay statemnts
-    batch_id: String,
-    valid_statments: Vec<ParsedTransactions>,
-    invalid_statements: Vec<ParsedTransactions>,
-}
-
-// so some transactions may possible have > 30% in unknowns
-#[derive(Debug)]
-pub struct InvalidStatement {
-    //i need the statements id
-    // i need the count and the transactions that were unknown
-    pub statement_id: String,
-    pub unknown_transactions: Vec<ParsedTransaction>,
-    pub total_transaction_count: usize,
+    pub batch_id: String,
+    pub valid_statments: Vec<StatementResult>,
+    pub invalid_statements: Vec<InvalidStatement>,
 }
 
 // i need some sort of error type incase the statement processing fails
@@ -94,7 +98,7 @@ impl StatementProcessor {
         user_id: String,
         tax_type: TaxEntity,
         tax_year: u32,
-    ) -> Result<StagedResult, ProcessingError> {
+    ) -> Result<SingleStatementResult, ProcessingError> {
         //okay so i need to collect the inputs and associate them properly
         // the pdf data that is given goes into the statment parser
         // the tax_type is used for both pit/llc entities and used for categorizer
@@ -111,11 +115,43 @@ impl StatementProcessor {
             TaxEntity::LLC => UserTaxState::LLC(LLCTaxState::new(user_id.clone(), tax_year)),
         };
 
-        let pdf_statement_calculator = self
+        let (pdf_statement_calculator, user_state) = self
             .statement_calculator
             .calculate_statement(pdf_categorizer.clone(), &type_of_user);
 
         // i need an id for each process that happens
         let process_id = uuid::Uuid::new_v4().to_string();
+
+        match pdf_statement_calculator.is_Valid {
+            true => Ok(SingleStatementResult::ValidStatement {
+                statement_id: process_id,
+                taxable_income_delta: pdf_statement_calculator.taxable_income_delta,
+                total_credit_flow: pdf_statement_calculator.total_credit_flow,
+                unknown_transactions: pdf_statement_calculator.unknown_transactions,
+                unknown_count: pdf_statement_calculator.unknown_transactions.len() + 1 as usize,
+            }),
+
+            false => OK(SingleStatementResult::InvalidStatement {
+                statement_id: process_id,
+                taxable_income_delta: pdf_statement_calculator.taxable_income_delta,
+                total_credit_flow: pdf_statement_calculator.total_credit_flow,
+                unknown_transactions: pdf_statement_calculator.unknown_transactions,
+                unknown_count: pdf_statement_calculator.unknown_transactions.len() + 1 as usize,
+            }),
+
+            _ => Err(),
+        }
     }
+
+    // what is batch statement processor doing?
+    // what are the inputs and output?
+    // i want the batch processor to collect a bunch of pdfs
+    // loop through the bunch and process one statement at a time
+    // then store valid and invalid statements seperatly
+    // then use the struct BatchProcessed
+    //
+    pub async fn batch_statement_processor(&self,)
 }
+
+
+// when i process statments i want the taxState too because i need that in the frontend
