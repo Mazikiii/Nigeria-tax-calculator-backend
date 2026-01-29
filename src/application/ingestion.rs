@@ -68,7 +68,7 @@ pub enum ProcessorError {
 }
 
 // because of what i did in tax calculator(preview and finalize calculator), i want an enum to specify mode
-
+#[derive(Clone, Copy)]
 pub enum ProcessorMode {
     Preview,
     Final,
@@ -123,12 +123,18 @@ impl StatementProcessor {
             .analyze_batch_parallel(pdf_processor, tax_type.clone());
 
         let (pdf_statement_calculator, updated_status) = match mode {
-            ProcessorMode::Preview => self
-                .statement_calculator
-                .preview_calculation(pdf_categorizer.clone(), &user_uptodate_state),
-            ProcessorMode::Final => self
-                .statement_calculator
-                .finalize_calculation(pdf_categorizer.clone(), &user_uptodate_state),
+            ProcessorMode::Preview => {
+                let result = self
+                    .statement_calculator
+                    .preview_calculation(pdf_categorizer.clone(), &user_uptodate_state);
+                (result, None)
+            }
+            ProcessorMode::Final => {
+                let (result, state) = self
+                    .statement_calculator
+                    .finalize_calculation(pdf_categorizer.clone(), &user_uptodate_state);
+                (result, Some(state))
+            }
         };
 
         // i need an id for each process that happens
@@ -146,7 +152,7 @@ impl StatementProcessor {
                 Some(updated_status),
             ))
         } else {
-            OK((
+            Ok((
                 SingleStatementResult::Invalid(InvalidStatement {
                     statement_id: process_id,
                     taxable_income_delta: pdf_statement_calculator.taxable_income_delta,
@@ -182,30 +188,32 @@ impl StatementProcessor {
         // i need a something that stores the overall state of all statements that was accepted
         let batch_id = uuid.Uuid.new_v4().to_string();
         let mut valid_statement_container: Vec<ValidStatement> = Vec::new();
-        let mut invalid_statement_container: Vec<invalidStatement> = Vec::new();
+        let mut invalid_statement_container: Vec<InvalidStatement> = Vec::new();
 
         let mut updated_state = user_state.clone();
 
         for pdf in pdfs {
-            let (statment, maybe_updated_state) = self.process_statement(
-                pdf,
-                user_id.clone(),
-                tax_type.clone(),
-                tax_year.clone(),
-                &mode,
-                &updated_state, // take note of why this var was created to begin with, so i save the output of the previous state outputed by calculate_statement
-            );
+            let (statment, maybe_updated_state) = self
+                .process_statement(
+                    pdf,
+                    user_id.clone(),
+                    tax_type.clone(),
+                    tax_year,
+                    &mode,
+                    &updated_state, // take note of why this var was created to begin with, so i save the output of the previous state outputed by calculate_statement
+                )
+                .await?;
 
             if let Some(update_s) = maybe_updated_status {
                 // remember preview and finalize outputs
-                updated_state = updated_status; // i always updating the state for the next statement to work with
+                updated_state = updated_s; // i always updating the state for the next statement to work with
             }
 
-            if let SingleStatementResult::valid(valid_s) = statment {
+            if let SingleStatementResult::Valid(valid_s) = statment {
                 valid_statement_container.push(valid_s)
             }
 
-            if let SingleStatementResult::invalid(invalid_s) = statment {
+            if let SingleStatementResult::Invalid(invalid_s) = statment {
                 invalid_statement_container.push(invalid_s)
             }
         }
@@ -218,9 +226,9 @@ impl StatementProcessor {
         Ok(BatchProcessed {
             batch_id,
             valid_statments: valid_statement_container,
-            invalid_statements: valid_statement_container,
+            invalid_statements: invalid_statement_container,
             updated_user_state: there_is_state,
-        });
+        })
     }
 }
 
