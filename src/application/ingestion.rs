@@ -4,6 +4,7 @@
 use crate::domain::entities::{
     LLCTaxState, PITaxState, ParsedTransaction, TaxEntity, UserTaxState,
 };
+
 use crate::domain::services::categorizer::TransactionCategorizer;
 use crate::domain::tax_calculator::TaxCalculator;
 use crate::infrastructure::pdf_parser::PdfParserAdapter;
@@ -41,10 +42,13 @@ pub struct InvalidStatement {
 }
 
 pub enum SingleStatmentResult {
-    ValidStatement,
-    InvalidStatement,
+    Valid(ValidStatement),
+    Invalid(InvalidStatement),
 }
 
+// i need a struct for BatchProcessing
+// what should be contained?
+// batch id, the batch should contain invalid or/and valid statments
 // when a batch of pdfs are uploaded there a possiblility that some pdfs had alot
 // of unknowns and some are okay so i need to identify them
 pub struct BatchProcessed {
@@ -52,21 +56,22 @@ pub struct BatchProcessed {
     // i need to store the list of okay statements
     // i need to store the list of not okay statemnts
     pub batch_id: String,
-    pub valid_statments: Vec<StatementResult>,
+    pub valid_statments: Vec<ValidStatement>,
     pub invalid_statements: Vec<InvalidStatement>,
+    pub updated_user_state: Option<UserTaxState>,
 }
 
 // i need some sort of error type incase the statement processing fails
 #[derive(Debug)]
 pub enum ProcessorError {
-    pdf_parsing_error(string),
+    pdf_parsing_error(String),
 }
 
 // because of what i did in tax calculator(preview and finalize calculator), i want an enum to specify mode
 
-pub enum ProcessorMode{
+pub enum ProcessorMode {
     Preview,
-    Final
+    Final,
 }
 //learn to construct structs
 // since i'm doing something like a facade i need to think of a structure
@@ -87,13 +92,13 @@ impl StatementProcessor {
     // constructor for my various StatementProcessor attributes, client passes them in
     pub fn new(
         pdf_parser: PdfParserAdapter,
-        categorizer: TransactionCategorizer,
-        statement_calculator: TaxCalculator,
+        categorize: TransactionCategorizer,
+        stat_calculator: TaxCalculator,
     ) -> Self {
         Self {
-            pdf_parser,
-            categorizer,
-            statement_calculator,
+            statment_parser: pdf_parser,
+            categorizer: categorize,
+            statement_calculator: stat_calculator,
         }
     }
 
@@ -104,56 +109,53 @@ impl StatementProcessor {
         tax_type: TaxEntity,
         tax_year: u32,
         mode: ProcessorMode,
-        user_uptodate_state: &UserTaxState
-    ) -> Result<SingleStatementResult, ProcessingError> {
+        user_uptodate_state: &UserTaxState,
+    ) -> Result<(SingleStatementResult, Option<UserTaxState>), ProcessingError> {
         //okay so i need to collect the inputs and associate them properly
         // the pdf data that is given goes into the statment parser
         // the tax_type is used for both pit/llc entities and used for categorizer
         // then year is also used for an entity
 
-        let pdf_processor = self.statment_parser.parse_pdf(pdf_data);
+        let pdf_processor = self.statment_parser.parse_pdf(pdf_data).await;
 
         let pdf_categorizer = self
             .categorizer
             .analyze_batch_parallel(pdf_processor, tax_type.clone());
 
-        let type_of_user = match tax_type {
-            TaxEntity::PIT => UserTaxState::PIT(PitTaxState::new(user_id.clone(), tax_year)),
-            TaxEntity::LLC => UserTaxState::LLC(LLCTaxState::new(user_id.clone(), tax_year)),
-        };
-
-
-        let (pdf_statement_calculator, updated_status) = match ProcessorMode{
-                ProcessorMode::Preview => self
+        let (pdf_statement_calculator, updated_status) = match mode {
+            ProcessorMode::Preview => self
                 .statement_calculator
                 .preview_calculation(pdf_categorizer.clone(), &user_uptodate_state),
-                ProcessorMode::Final => self
+            ProcessorMode::Final => self
                 .statement_calculator
                 .finalize_calculation(pdf_categorizer.clone(), &user_uptodate_state),
-            };
-
+        };
 
         // i need an id for each process that happens
         let process_id = uuid::Uuid::new_v4().to_string();
 
-        match pdf_statement_calculator.is_Valid {
-            true => Ok(SingleStatementResult::ValidStatement {
-                statement_id: process_id,
-                taxable_income_delta: pdf_statement_calculator.taxable_income_delta,
-                total_credit_flow: pdf_statement_calculator.total_credit_flow,
-                unknown_transactions: pdf_statement_calculator.unknown_transactions,
-                unknown_count: pdf_statement_calculator.unknown_transactions.len() + 1 as usize,
-            }),
-
-            false => OK(SingleStatementResult::InvalidStatement {
-                statement_id: process_id,
-                taxable_income_delta: pdf_statement_calculator.taxable_income_delta,
-                total_credit_flow: pdf_statement_calculator.total_credit_flow,
-                unknown_transactions: pdf_statement_calculator.unknown_transactions,
-                unknown_count: pdf_statement_calculator.unknown_transactions.len() + 1 as usize,
-            }),
-
-            _ => Err(),
+        if pdf_statement_calculator.is_valid_for_use {
+            Ok((
+                SingleStatementResult::Valid(ValidStatement {
+                    statement_id: process_id,
+                    taxable_income_delta: pdf_statement_calculator.taxable_income_delta,
+                    total_credit_flow: pdf_statement_calculator.total_credit_flow,
+                    unknown_transactions: pdf_statement_calculator.unknown_transactions,
+                    unknown_count: pdf_statement_calculator.unknown_transactions.len(),
+                }),
+                Some(updated_status),
+            ))
+        } else {
+            OK((
+                SingleStatementResult::Invalid(InvalidStatement {
+                    statement_id: process_id,
+                    taxable_income_delta: pdf_statement_calculator.taxable_income_delta,
+                    total_credit_flow: pdf_statement_calculator.total_credit_flow,
+                    unknown_transactions: pdf_statement_calculator.unknown_transactions,
+                    unknown_count: pdf_statement_calculator.unknown_transactions.len(),
+                }),
+                None,
+            ))
         }
     }
 
@@ -164,10 +166,62 @@ impl StatementProcessor {
     // then store valid and invalid statements seperatly
     // then use the struct BatchProcessed
     //
-    pub async fn batch_statement_processor(&self, pdfs: Vec<Vec<u8>>,  user_id: String,
-    tax_type: TaxEntity,
-    tax_year: u32,) ->
-}
+    pub async fn batch_statement_processor(
+        &self,
+        pdfs: Vec<Vec<u8>>,
+        user_id: String,
+        tax_type: TaxEntity,
+        tax_year: u32,
+        mode: ProcessorMode,
+        user_state: &UserTaxState,
+    ) -> Result<BatchProcessed, ProcessorError> {
+        // i need to go through each pdf and pass it to process statement
+        // i need to pass references or clones to that function
+        // i need a storage for the valid and invalid statments
+        // i need to create a batch id
+        // i need a something that stores the overall state of all statements that was accepted
+        let batch_id = uuid.Uuid.new_v4().to_string();
+        let mut valid_statement_container: Vec<ValidStatement> = Vec::new();
+        let mut invalid_statement_container: Vec<invalidStatement> = Vec::new();
 
+        let mut updated_state = user_state.clone();
+
+        for pdf in pdfs {
+            let (statment, maybe_updated_state) = self.process_statement(
+                pdf,
+                user_id.clone(),
+                tax_type.clone(),
+                tax_year.clone(),
+                &mode,
+                &updated_state, // take note of why this var was created to begin with, so i save the output of the previous state outputed by calculate_statement
+            );
+
+            if let Some(update_s) = maybe_updated_status {
+                // remember preview and finalize outputs
+                updated_state = updated_status; // i always updating the state for the next statement to work with
+            }
+
+            if let SingleStatementResult::valid(valid_s) = statment {
+                valid_statement_container.push(valid_s)
+            }
+
+            if let SingleStatementResult::invalid(invalid_s) = statment {
+                invalid_statement_container.push(invalid_s)
+            }
+        }
+
+        let there_is_state = match &mode {
+            ProcessorMode::Preview => None,
+            ProcessorMode::Final => Some(updated_state),
+        };
+
+        Ok(BatchProcessed {
+            batch_id,
+            valid_statments: valid_statement_container,
+            invalid_statements: valid_statement_container,
+            updated_user_state: there_is_state,
+        });
+    }
+}
 
 // when i process statments i want the taxState too because i need that in the frontend
