@@ -9,6 +9,7 @@ use crate::domain::services::categorizer::TransactionCategorizer;
 use crate::domain::tax_calculator::TaxCalculator;
 use crate::infrastructure::pdf_parser::PdfParserAdapter;
 use rust_decimal::Decimal;
+use std::collections::HashMap;
 // what entites would i need for the connections
 // TaxEntity
 // since this is a point of access for other parts look at what type of data a
@@ -27,6 +28,7 @@ pub struct ValidStatement {
     pub statement_id: String,
     pub taxable_income_delta: Decimal,
     pub total_credit_flow: Decimal,
+    pub all_transactions: Vec<ParsedTransaction>, // need this to recalculate later
     pub unknown_transactions: Vec<ParsedTransaction>,
     pub unknown_count: usize,
 }
@@ -37,8 +39,17 @@ pub struct InvalidStatement {
     pub statement_id: String,
     pub taxable_income_delta: Decimal,
     pub total_credit_flow: Decimal,
+    pub total_transaction_count: usize, // need this so i calculate for against user skipped txns
+    pub all_transactions: Vec<ParsedTransaction>, // need this to recalculate later
     pub unknown_transactions: Vec<ParsedTransaction>,
     pub unknown_count: usize,
+}
+
+// helper to get all invalid txns with their source statement info
+pub struct IndexedTransaction {
+    pub statement_id: String,
+    pub transaction: ParsedTransaction,
+    pub global_index: usize, // the index of that txn in the collection that stores alll invalid txn
 }
 
 pub enum SingleStatmentResult {
@@ -83,6 +94,10 @@ pub struct StatementProcessor {
     statement_calculator: TaxCalculator,
 }
 
+pub struct TxnClarification {
+    pub index: usize, // index from get_all_invalid_transactions output
+    pub role: TransactionRole,
+}
 impl StatementProcessor {
     //what are the inputs and outputs?
     // inputs : the data:statement, are they pit or llc and the userid and tax year
@@ -199,7 +214,7 @@ impl StatementProcessor {
                     user_id.clone(),
                     tax_type.clone(),
                     tax_year,
-                    &mode,
+                    mode,
                     &updated_state, // take note of why this var was created to begin with, so i save the output of the previous state outputed by calculate_statement
                 )
                 .await?;
@@ -230,6 +245,108 @@ impl StatementProcessor {
             updated_user_state: there_is_state,
         })
     }
-}
 
-// when i process statments i want the taxState too because i need that in the frontend
+    // giving the frontend all invalid txns to display
+    pub fn get_all_invalid_transactions(&self, batch: &BatchProcessed) -> Vec<IndexedTransaction> {
+        let mut result = Vec::new();
+        let mut index = 0;
+
+        for stmt in &batch.invalid_statements {
+            for txn in &stmt.unknown_transactions {
+                result.push(IndexedTransaction {
+                    statement_id: stmt.statement_id.clone(),
+                    transaction: txn.clone(),
+                    global_index: index,
+                });
+                index += 1;
+            }
+        }
+
+        result
+    }
+
+    // after user clarifies and skips, recalculate what's left
+    pub async fn apply_clarifications(
+        &self,
+        batch: &mut BatchProcessed,
+        clarifications: Vec<(usize, TransactionRole)>, // index and new role
+        skipped_indices: Vec<usize>,                   // indices user clicked x on
+        current_state: &UserTaxState,
+    ) -> Result<(), ProcessorError> {
+        // get indexed txns to know which statement owns which txn
+        let indexed = self.get_all_invalid_transactions(batch);
+
+        // count skips per statement
+        let mut skips_per_statement: HashMap<String, usize> = HashMap::new();
+        for idx in &skipped_indices {
+            if let Some(item) = indexed.get(*idx) {
+                *skips_per_statement
+                    .entry(item.statement_id.clone())
+                    .or_insert(0) += 1;
+            }
+        }
+
+        // apply clarifications using mutable access
+        let mut all_txns = Vec::new();
+        for stmt in &mut batch.invalid_statements {
+            for txn in &mut stmt.unknown_transactions {
+                all_txns.push(txn);
+            }
+        }
+
+        for (index, role) in clarifications {
+            if let Some(txn) = all_txns.get_mut(index) {
+                txn.role = role;
+            }
+        }
+
+        // recalculate each statement
+        let mut newly_valid = Vec::new();
+        let mut still_invalid = Vec::new();
+
+        for invalid_stmt in batch.invalid_statements.drain(..) {
+            let skip_count = skips_per_statement
+                .get(&invalid_stmt.statement_id)
+                .unwrap_or(&0);
+            let skip_percentage =
+                (*skip_count as f64 / invalid_stmt.total_transaction_count as f64) * 100.0;
+
+            // if too many skips, keep in invalid without processing
+            if skip_percentage >= 30.0 {
+                still_invalid.push(invalid_stmt);
+                continue;
+            }
+
+            // recalculate with updated txns
+            let calc_result = self
+                .statement_calculator
+                .preview_calculation(invalid_stmt.unknown_transactions.clone(), current_state);
+
+            // check if now valid
+            if calc_result.is_valid_for_use {
+                newly_valid.push(ValidStatement {
+                    statement_id: invalid_stmt.statement_id,
+                    taxable_income_delta: calc_result.taxable_income_delta,
+                    total_credit_flow: calc_result.total_credit_flow,
+                    unknown_transactions: calc_result.unknown_transactions.clone(),
+                    unknown_count: calc_result.unknown_transactions.len(),
+                });
+            } else {
+                still_invalid.push(InvalidStatement {
+                    statement_id: invalid_stmt.statement_id,
+                    total_transaction_count: invalid_stmt.total_transaction_count,
+                    taxable_income_delta: calc_result.taxable_income_delta,
+                    total_credit_flow: calc_result.total_credit_flow,
+                    unknown_transactions: calc_result.unknown_transactions.clone(),
+                    unknown_count: calc_result.unknown_transactions.len(),
+                });
+            }
+        }
+
+        // update batch
+        batch.valid_statements.extend(newly_valid);
+        batch.invalid_statements = still_invalid;
+
+        Ok(())
+    }
+}
