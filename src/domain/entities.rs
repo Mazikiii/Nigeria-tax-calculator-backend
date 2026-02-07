@@ -69,6 +69,7 @@ pub enum TransactionRole {
     Deduction,   // statutory outflows (Pension, NHIS, NHF)
     PersonalExp, // the tax man does not care about this
     Unknown,     // vague narrations requiring user input
+    PassThrough, // in the cases when someone sent the user money to transfer to another person (the person acted as a middle man)
 }
 
 // more like an uptodate tracker for each PIT users

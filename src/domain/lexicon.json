@@ -801,5 +801,7 @@
         ["BABY", "SHOP"]
       ]
     }
-  }
+  },
+
+  "pass_through": {}
 }

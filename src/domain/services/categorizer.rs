@@ -9,14 +9,14 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::{HashMap, HashSet};
 use std::fs; // this is particularly for handling multiple transactions categorization in parallelism
-
-// First i need to rule out whether the transaaction is a charge VAT or Stamp duties
-// there are going to be about four layers in this logic
-// first layer is a sentence checker, users narration is checked against
-// patterns in json- this will use recursion in some sort of way
-// second layer is the keyword layer, which compares a single word to a keyword hashmap
-// third layer is the fuzzy/ misspells, eg salry is salary and a check is done
-// fourth and final layer is the ai layer, where ai take the narration and tries to infer the category
+use symspell_rs::{SymSpell, Verbosity}; // this library helps me to correct misspelled words (its works with a dictionary) but in our case our json converted to hashmap in keyword container
+                                        // First i need to rule out whether the transaaction is a charge VAT or Stamp duties
+                                        // there are going to be about four layers in this logic
+                                        // first layer is a sentence checker, users narration is checked against
+                                        // patterns in json- this will use recursion in some sort of way
+                                        // second layer is the keyword layer, which compares a single word to a keyword hashmap
+                                        // third layer is the fuzzy/ misspells, eg salry is salary and a check is done
+                                        // fourth and final layer is the ai layer, where ai take the narration and tries to infer the category
 
 // Internal struct to hold pattern logic in memory
 #[derive(Debug, Clone)]
@@ -32,6 +32,7 @@ pub struct TransactionCategorizer {
     keywords_container: HashMap<String, TransactionRole>,
     pattern_container: HashMap<String, Vec<PatternRule>>,
     charge_regex: Regex,
+    symspell_words: SymSpell,
 }
 
 impl TransactionCategorizer {
@@ -45,6 +46,9 @@ impl TransactionCategorizer {
         // the structure is needed which was defined as LexiconFile in entities
         let arranged_string: LexiconFile =
             serde_json::from_str(&json_to_string).expect("Failed to arrange string");
+
+        // need to initialize a variable for symspell
+        let mut symspell_words = SymSpell::default();
 
         // initialize the keyword and pattern containers
         let mut keywords_container = HashMap::new();
@@ -63,6 +67,7 @@ impl TransactionCategorizer {
                     "UTILITIES" => TransactionRole::Utilities,
                     "SALARY" => TransactionRole::Salary,
                     "SCHOOL" | "TUITION" => TransactionRole::Relief, // Education is still generic Relief
+
                     _ => {
                         //if not in the above categories, check the below too
                         match category.as_str() {
@@ -74,6 +79,7 @@ impl TransactionCategorizer {
                             "deduction" => TransactionRole::Deduction,
                             "relief" => TransactionRole::Relief,
                             "personal_exp" => TransactionRole::PersonalExp,
+                            "pass_through" => TransactionRole::PassThrough,
                             _ => TransactionRole::Unknown,
                         }
                     }
@@ -116,11 +122,17 @@ impl TransactionCategorizer {
             }
         }
 
+        // for symspell, add all key words
+        for words in &keywords_container.keys() {
+            symspell_words.create_dictionary_entry(words.clone(), 1);
+        }
+
         return Self {
             keywords_container,
             pattern_container,
             charge_regex: Regex::new(r"(?i)(CHG|COMM|VAT|FEE|DUTY|LEVY|EMTL)[:\s]+([\d,]+\.?\d*)")
                 .expect("Invalid regex"),
+            symspell_words,
         };
     }
 
@@ -167,37 +179,24 @@ impl TransactionCategorizer {
         None
     }
 
-    //fuzzy or misspell checker
-    fn fuzzy_checker(&self, narration: &str) -> Option<TransactionRole> {
-        let mut fuzzy_roles = HashSet::new();
-        let uppercase_narration = narration.to_uppercase();
-        let size_of_narration = uppercase_narration.len();
+    fn fuzzy_checker(&self, words: &Hashset<String>) -> Hashset<String> {
+        let mut similarity_num = 100;
+        let corrected: Hashset<String> = Hashset::new();
+        for word in words {
+            let correct_word = symspell.lookup(words, Verbosity::Closest, 2); // the output of this is a vec of suggestions, it can be alot
 
-        if size_of_narration < 2 {
-            return None;
-        }
-
-        // If length difference is > 2, the edit distance is definitely > 4
-        for (keyword, role) in &self.keywords_container {
-            let length_of_keyword = keyword.len();
-            //if the word difference is very large then its not something to consider
-            // the misspell(input) and the actual word
-            if (size_of_narration as i32 - length_of_keyword as i32).abs() > 4 {
-                continue;
-            }
-
-            // the actual processing, compare the the misspell with an actual word
-            let ratio = fuzzywuzzy::fuzz::ratio(&uppercase_narration, keyword);
-            if ratio > 82 {
-                // if comparism is pretty high return the role
-                fuzzy_roles.insert(*role);
+            if self.keywords_container.contains_key(words) {
+                corrected.insert(word.clone())
+            } else {
+                if let Some(suggestion) = correct_words.first() {
+                    corrected.insert(suggestion)
+                } else {
+                    corrected.insert(word)
+                }
             }
         }
-        if fuzzy_roles.len() == 1 {
-            return Some(fuzzy_roles.drain().next().unwrap());
-        } else {
-            return None;
-        }
+
+        corrected
     }
 
     fn refine_for_pit(&self, role: TransactionRole, amount: Decimal) -> TransactionRole {
@@ -263,7 +262,9 @@ impl TransactionCategorizer {
             .collect() // collect results in order
     }
 
+    // ---------------------------
     // now the actual thing
+    // ---------------------------
     pub fn analyze_raw_statment(
         &self,
         raw: RawStatement,
@@ -281,8 +282,10 @@ impl TransactionCategorizer {
             .map(|s| s.to_string())
             .collect();
 
+        let corrected_words = fuzzy_checker(&narration_words);
+
         // layer by layer we check, first a pattern? no then keyword?
-        let (base_role, confidence) = self.layer_processor(&narration_words, &raw.narration);
+        let (base_role, confidence) = self.layer_processor(&corrected_words);
 
         // Refine role based on User Type (PIT vs LLC) and Direction
         let role = match user_type {
@@ -302,7 +305,7 @@ impl TransactionCategorizer {
 
     // layer by layer we check, first a pattern? no then keyword? fuzzy? ai last!
     // you could use coR here but that is overkill
-    fn layer_processor(&self, words: &HashSet<String>, narration: &str) -> (TransactionRole, u32) {
+    fn layer_processor(&self, words: &HashSet<String>) -> (TransactionRole, u32) {
         if let Some(process) = self.analyze_pattern(words) {
             return (process, 100);
         }
@@ -311,9 +314,7 @@ impl TransactionCategorizer {
             return (process, 100);
         }
 
-        if let Some(process) = self.fuzzy_checker(narration) {
-            return (process, 100);
-        }
+        // remaining ai layer
 
         // if all failes then transaction unknown, ai handle it
         (TransactionRole::Unknown, 0)
