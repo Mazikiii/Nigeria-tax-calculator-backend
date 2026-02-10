@@ -129,3 +129,20 @@ pub enum ParserError {
     #[error("this pdf formart is not recognized")]
     UnknownFormat,
 }
+
+pub enum CheckerResult {
+    UnlockedPdf(Vec<u8>),
+    LockedPdf(Vec<u8>),
+}
+
+//
+// Errors
+//
+
+#[derive(Debug, Error)]
+pub enum CheckError {
+    #[error("This Pdf is corrupted")]
+    CorruptedPdf(String),
+    #[error("Provided a wrong password")]
+    WrongPassword,
+}

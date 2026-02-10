@@ -237,13 +237,21 @@ impl StatementProcessor {
             ProcessorMode::Preview => None,
             ProcessorMode::Final => Some(updated_state),
         };
-
-        Ok(BatchProcessed {
-            batch_id,
-            valid_statments: valid_statement_container,
-            invalid_statements: invalid_statement_container,
-            updated_user_state: there_is_state,
-        })
+        if invalid_statement_container.len() == 0 {
+            Ok(BatchProcessed {
+                batch_id,
+                valid_statments: valid_statement_container,
+                invalid_statements: invalid_statement_container,
+                updated_user_state: Some(updated_state),
+            })
+        } else {
+            Ok(BatchProcessed {
+                batch_id,
+                valid_statments: valid_statement_container,
+                invalid_statements: invalid_statement_container,
+                updated_user_state: there_is_state,
+            })
+        }
     }
 
     // giving the frontend all invalid txns to display

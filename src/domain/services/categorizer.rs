@@ -9,14 +9,15 @@ use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::{HashMap, HashSet};
 use std::fs; // this is particularly for handling multiple transactions categorization in parallelism
-use symspell_rs::{SymSpell, Verbosity}; // this library helps me to correct misspelled words (its works with a dictionary) but in our case our json converted to hashmap in keyword container
-                                        // First i need to rule out whether the transaaction is a charge VAT or Stamp duties
-                                        // there are going to be about four layers in this logic
-                                        // first layer is a sentence checker, users narration is checked against
-                                        // patterns in json- this will use recursion in some sort of way
-                                        // second layer is the keyword layer, which compares a single word to a keyword hashmap
-                                        // third layer is the fuzzy/ misspells, eg salry is salary and a check is done
-                                        // fourth and final layer is the ai layer, where ai take the narration and tries to infer the category
+use symspell_rs::{SymSpell, Verbosity};
+// this library helps me to correct misspelled words (its works with a dictionary) but in our case our json converted to hashmap in keyword container
+// First i need to rule out whether the transaaction is a charge VAT or Stamp duties
+// there are going to be about four layers in this logic
+// first layer is a sentence checker, users narration is checked against
+// patterns in json- this will use recursion in some sort of way
+// second layer is the keyword layer, which compares a single word to a keyword hashmap
+// third layer is the fuzzy/ misspells, eg salry is salary and a check is done
+// fourth and final layer is the ai layer, where ai take the narration and tries to infer the category
 
 // Internal struct to hold pattern logic in memory
 #[derive(Debug, Clone)]
