@@ -2,11 +2,13 @@
 // i need a function that processes a bunch of statements
 // lets start with one function that handles the most base case
 use crate::domain::entities::{
-    LLCTaxState, PITaxState, ParsedTransaction, TaxEntity, UserTaxState,
+    CheckError, CheckerResult, LLCTaxState, PITaxState, ParsedTransaction, PdfFile, PdfStates,
+    TaxEntity, UserTaxState,
 };
 
 use crate::domain::services::categorizer::TransactionCategorizer;
 use crate::domain::tax_calculator::TaxCalculator;
+use crate::infrastructure::pdf_decrypter::PdfEncryptionChecker;
 use crate::infrastructure::pdf_parser::PdfParserAdapter;
 use rust_decimal::Decimal;
 use std::collections::HashMap;
@@ -84,6 +86,12 @@ pub enum ProcessorMode {
     Preview,
     Final,
 }
+
+pub struct TxnClarification {
+    pub index: usize, // index from get_all_invalid_transactions output
+    pub role: TransactionRole,
+}
+
 //learn to construct structs
 // since i'm doing something like a facade i need to think of a structure
 // that embodies the processes happening, i want to Process a statement,
@@ -92,12 +100,9 @@ pub struct StatementProcessor {
     statment_parser: PdfParserAdapter,
     categorizer: TransactionCategorizer,
     statement_calculator: TaxCalculator,
+    pdf_decrypter: PdfEncryptionChecker,
 }
 
-pub struct TxnClarification {
-    pub index: usize, // index from get_all_invalid_transactions output
-    pub role: TransactionRole,
-}
 impl StatementProcessor {
     //what are the inputs and outputs?
     // inputs : the data:statement, are they pit or llc and the userid and tax year
@@ -109,11 +114,13 @@ impl StatementProcessor {
         pdf_parser: PdfParserAdapter,
         categorize: TransactionCategorizer,
         stat_calculator: TaxCalculator,
+        pdf_decrypter: PdfEncryptionChecker,
     ) -> Self {
         Self {
             statment_parser: pdf_parser,
             categorizer: categorize,
             statement_calculator: stat_calculator,
+            pdf_decrypter,
         }
     }
 
@@ -357,4 +364,46 @@ impl StatementProcessor {
 
         Ok(())
     }
+
+    // when the user puts a bunch of pdfs i want to seperate the locked and unlocked ones
+    // but if all are unlocked i want to move straight to processing
+    // if not all are unlocked i want to show the users the locked ones so they put pass
+    // i created a new struct because i need to track states of pdfs and know where they belong
+    // i created the PdfFile struct that stores id, name of pdf and the actual data
+    // i'll use that as input, a collection of it, and my output is a new struct
+    // the struct contains items like lockedpdfs, unlockedpdfs, corrupted pdf
+    // it is called PdfState
+    pub async fn batch_pdf_checks(&self, pdfs: Vec<PdfFile>) -> PdfState {
+        // okay so i need to go through each pdf and call the checkpdf function on each
+        // based on the output of that function i categorize
+        // i need storages to allocate back to pdfstate
+        let mut locked_pdfs = Vec::new();
+        let mut unlocked_pdfs = Vec::new();
+        let mut corrupted_pdfs = Vec::new();
+
+        for pdf in pdfs {
+            // i need to pass the data to the check_pdf function
+            let checked_pdf = self.pdf_decrypter.check_pdf(pdf.data)?;
+
+            match checked_pdf {
+                Ok(CheckedResult::LockedPdf(_)) => locked_pdfs.push(pdf),
+                Ok(CheckedResult::UnlockedPdf(_)) => unlocked_pdfs.push(pdf),
+                Err(CheckError::CorruptedPdf(msg)) => corrupted_pdfs.push(CorruptedPdfInfo {
+                    id: pdf.id,
+                    name: pdf.name,
+                    error_msg: msg,
+                }),
+                _ => {}
+            }
+        }
+
+        PdfState {
+            locked_pdf: locked_pdfs,
+            unlocked_pdf: unlocked_pdfs,
+            corrupted_pdf: corrupted_pdfs,
+        }
+    }
+
+    // whats
+    pub async fn decrypt_pdfs(&self, )
 }

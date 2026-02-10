@@ -21,6 +21,10 @@ use std::load::read;
 pub struct PdfEncryptionChecker;
 
 impl PdfEncryptionChecker {
+    pub fn new() -> Self {
+        Self
+    }
+
     pub fn check_pdf(&self, pdf_upload: &[u8]) -> Result<CheckerResult, CheckingError> {
         let mut pdf_bytes: Vec<u8> = std::fs::load(pdf)?;
 
@@ -53,8 +57,8 @@ impl PdfEncryptionChecker {
 
         if pdf.is_encrypted() {
             pdf.authenticate_password(pass.as_bytes())
-                .map_err(|e| CheckerError::CorruptedPdf(e.to_string()))?; // this just decryptes the pdf assuming the pass is correct
-                                                                          // i still have to save the new decrypted pdf somewhere as its hanging
+                .map_err(|e| CheckerError::WrongPassword)?; // this just decryptes the pdf assuming the pass is correct
+                                                            // i still have to save the new decrypted pdf somewhere as its hanging
         }
         // container for the decrypted data
         let mut decrypted_pdf = Vec::new();

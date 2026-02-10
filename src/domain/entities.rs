@@ -135,6 +135,24 @@ pub enum CheckerResult {
     LockedPdf(Vec<u8>),
 }
 
+// used in interface for pdf identification
+pub struct PdfFile {
+    id: String,
+    name: String,
+    data: Vec<u8>,
+}
+
+pub struct PdfStates {
+    locked_pdf: Vec<PdfFile>,
+    unlocked_pdf: Vec<PdfFile>,
+    corrupted_pdf: Vec<CorruptedPdfInfo>, // the id of the pdf and message, no need for the full file
+}
+
+pub struct CorruptedPdfInfo {
+    id: String,
+    name: String,
+    error_msg: String,
+}
 //
 // Errors
 //
