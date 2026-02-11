@@ -43,11 +43,7 @@ impl PdfEncryptionChecker {
 
     // to decrypt a pdf i need to collect the  pdf and the password
     // and return a vec<u8> / wrong password error
-    pub fn decrypt_pdf(
-        &self,
-        pdf_bytes: &[u8],
-        pass: &str,
-    ) -> Result<CheckerResult, CheckingError> {
+    pub fn decrypt_pdf(&self, pdf_bytes: &[u8], pass: &str) -> Result<Vec, CheckingError> {
         // the checker will aleady return a pdf_byte
 
         // now its converted i need to load the bytes, signaling its a pdf so i can check if its encrypted

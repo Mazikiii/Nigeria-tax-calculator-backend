@@ -404,6 +404,33 @@ impl StatementProcessor {
         }
     }
 
-    // whats
-    pub async fn decrypt_pdfs(&self, )
+    // whats needed here as input?
+    // I pdfs id and password, and pdf, output would be PdfState(updated version of the input)
+    pub async fn decrypt_pdfs(
+        &self,
+        mut pdfs: PdfStates,
+        passwords: HashMap<String, String>,
+    ) -> PdfStates {
+        let mut still_locked = Vec::new();
+
+        for pdf in pdfs.locked_pdf {
+            if let Some(password) = passwords.get(&pdf.id) {
+                match self.pdf_decrypter.decrypt_pdf(&pdf.data, password) {
+                    Ok(decrypted_data) => {
+                        pdfs.unlocked_pdf.push(PdfFile {
+                            id: pdf.id,
+                            name: pdf.name,
+                            data: decrypted_data,
+                        });
+                    }
+                    Err(_) => still_locked.push(pdf), // keep locked
+                }
+            } else {
+                still_locked.push(pdf); //  password provided
+            }
+        }
+
+        pdfs.locked_pdf = still_locked; // update with only failed ones
+        pdfs
+    }
 }
