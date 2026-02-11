@@ -2,8 +2,8 @@
 // i need a function that processes a bunch of statements
 // lets start with one function that handles the most base case
 use crate::domain::entities::{
-    CheckError, CheckerResult, LLCTaxState, PITaxState, ParsedTransaction, PdfFile, PdfStates,
-    TaxEntity, UserTaxState,
+    CheckError, CheckerResult, CorruptedPdfInfo, LLCTaxState, PITaxState, ParsedTransaction,
+    PdfFile, PdfStates, TaxEntity, TransactionRole, UserTaxState,
 };
 
 use crate::domain::services::categorizer::TransactionCategorizer;
@@ -132,13 +132,13 @@ impl StatementProcessor {
         tax_year: u32,
         mode: ProcessorMode,
         user_uptodate_state: &UserTaxState,
-    ) -> Result<(SingleStatementResult, Option<UserTaxState>), ProcessingError> {
+    ) -> Result<(SingleStatementResult, Option<UserTaxState>), ProcessorError> {
         //okay so i need to collect the inputs and associate them properly
         // the pdf data that is given goes into the statment parser
         // the tax_type is used for both pit/llc entities and used for categorizer
         // then year is also used for an entity
 
-        let pdf_processor = self.statment_parser.parse_pdf(pdf_data).await;
+        let pdf_processor = self.statment_parser.parse_pdf(pdf_datas).await;
 
         let pdf_categorizer = self
             .categorizer
@@ -168,10 +168,11 @@ impl StatementProcessor {
                     statement_id: process_id,
                     taxable_income_delta: pdf_statement_calculator.taxable_income_delta,
                     total_credit_flow: pdf_statement_calculator.total_credit_flow,
+                    all_transactions: pdf_categorizer.clone(),
                     unknown_transactions: pdf_statement_calculator.unknown_transactions,
                     unknown_count: pdf_statement_calculator.unknown_transactions.len(),
                 }),
-                Some(updated_status),
+                updated_status,
             ))
         } else {
             Ok((
@@ -179,6 +180,8 @@ impl StatementProcessor {
                     statement_id: process_id,
                     taxable_income_delta: pdf_statement_calculator.taxable_income_delta,
                     total_credit_flow: pdf_statement_calculator.total_credit_flow,
+                    total_transaction_count: pdf_categorizer.len(),
+                    all_transactions: pdf_categorizer,
                     unknown_transactions: pdf_statement_calculator.unknown_transactions,
                     unknown_count: pdf_statement_calculator.unknown_transactions.len(),
                 }),
@@ -208,7 +211,7 @@ impl StatementProcessor {
         // i need a storage for the valid and invalid statments
         // i need to create a batch id
         // i need a something that stores the overall state of all statements that was accepted
-        let batch_id = uuid.Uuid.new_v4().to_string();
+        let batch_id = uuid::Uuid::new_v4().to_string();
         let mut valid_statement_container: Vec<ValidStatement> = Vec::new();
         let mut invalid_statement_container: Vec<InvalidStatement> = Vec::new();
 
@@ -226,7 +229,7 @@ impl StatementProcessor {
                 )
                 .await?;
 
-            if let Some(update_s) = maybe_updated_status {
+            if let Some(update_s) = maybe_updated_state {
                 // remember preview and finalize outputs
                 updated_state = updated_s; // i always updating the state for the next statement to work with
             }
@@ -244,7 +247,7 @@ impl StatementProcessor {
             ProcessorMode::Preview => None,
             ProcessorMode::Final => Some(updated_state),
         };
-        if invalid_statement_container.len() == 0 {
+        if invalid_statement_container.is_empty() {
             Ok(BatchProcessed {
                 batch_id,
                 valid_statments: valid_statement_container,
@@ -343,6 +346,7 @@ impl StatementProcessor {
                     statement_id: invalid_stmt.statement_id,
                     taxable_income_delta: calc_result.taxable_income_delta,
                     total_credit_flow: calc_result.total_credit_flow,
+                    all_transactions: invalid_stmt.all_transactions,
                     unknown_transactions: calc_result.unknown_transactions.clone(),
                     unknown_count: calc_result.unknown_transactions.len(),
                 });
@@ -373,7 +377,7 @@ impl StatementProcessor {
     // i'll use that as input, a collection of it, and my output is a new struct
     // the struct contains items like lockedpdfs, unlockedpdfs, corrupted pdf
     // it is called PdfState
-    pub async fn batch_pdf_checks(&self, pdfs: Vec<PdfFile>) -> PdfState {
+    pub async fn batch_pdf_checks(&self, pdfs: Vec<PdfFile>) -> Result<PdfStates, CheckError> {
         // okay so i need to go through each pdf and call the checkpdf function on each
         // based on the output of that function i categorize
         // i need storages to allocate back to pdfstate
@@ -383,11 +387,11 @@ impl StatementProcessor {
 
         for pdf in pdfs {
             // i need to pass the data to the check_pdf function
-            let checked_pdf = self.pdf_decrypter.check_pdf(pdf.data)?;
+            let checked_pdf = self.pdf_decrypter.check_pdf(&pdf.data);
 
             match checked_pdf {
-                Ok(CheckedResult::LockedPdf(_)) => locked_pdfs.push(pdf),
-                Ok(CheckedResult::UnlockedPdf(_)) => unlocked_pdfs.push(pdf),
+                Ok(CheckerResult::LockedPdf(_)) => locked_pdfs.push(pdf),
+                Ok(CheckerResult::UnlockedPdf(_)) => unlocked_pdfs.push(pdf),
                 Err(CheckError::CorruptedPdf(msg)) => corrupted_pdfs.push(CorruptedPdfInfo {
                     id: pdf.id,
                     name: pdf.name,
@@ -397,11 +401,11 @@ impl StatementProcessor {
             }
         }
 
-        PdfState {
+        Ok(PdfStates {
             locked_pdf: locked_pdfs,
             unlocked_pdf: unlocked_pdfs,
             corrupted_pdf: corrupted_pdfs,
-        }
+        })
     }
 
     // whats needed here as input?
