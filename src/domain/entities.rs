@@ -153,6 +153,11 @@ pub struct CorruptedPdfInfo {
     name: String,
     error_msg: String,
 }
+
+pub struct LockedPdfInfo {
+    id: String,
+    pdf: PdfFile,
+}
 //
 // Errors
 //

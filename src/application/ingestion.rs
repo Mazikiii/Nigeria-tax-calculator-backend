@@ -12,6 +12,7 @@ use crate::infrastructure::pdf_decrypter::PdfEncryptionChecker;
 use crate::infrastructure::pdf_parser::PdfParserAdapter;
 use rust_decimal::Decimal;
 use std::collections::HashMap;
+use uuid::*;
 // what entites would i need for the connections
 // TaxEntity
 // since this is a point of access for other parts look at what type of data a
