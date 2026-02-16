@@ -143,6 +143,7 @@ pub struct PdfFile {
 }
 
 pub struct PdfStates {
+    batch_id: String,
     locked_pdf: Vec<PdfFile>,
     unlocked_pdf: Vec<PdfFile>,
     corrupted_pdf: Vec<CorruptedPdfInfo>, // the id of the pdf and message, no need for the full file

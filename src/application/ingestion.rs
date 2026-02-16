@@ -385,6 +385,7 @@ impl StatementProcessor {
         let mut locked_pdfs = Vec::new();
         let mut unlocked_pdfs = Vec::new();
         let mut corrupted_pdfs = Vec::new();
+        let id = uuid::Uuid::new_v4().to_string();
 
         for pdf in pdfs {
             // i need to pass the data to the check_pdf function
@@ -403,6 +404,7 @@ impl StatementProcessor {
         }
 
         Ok(PdfStates {
+            batch_id: id,
             locked_pdf: locked_pdfs,
             unlocked_pdf: unlocked_pdfs,
             corrupted_pdf: corrupted_pdfs,
