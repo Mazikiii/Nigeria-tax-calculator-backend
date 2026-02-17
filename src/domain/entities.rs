@@ -11,6 +11,10 @@ pub struct LexiconFile {
     pub categories: HashMap<String, HashMap<String, CategoryRule>>,
 }
 
+pub struct User {
+    id: String,
+    email: String,
+}
 // this is for the arranged data from json, the subcatigory is either a keyword or pattern
 #[derive(Debug, Deserialize)]
 pub struct CategoryRule {
@@ -121,15 +125,6 @@ impl PitTaxState {
     }
 }
 
-// this is error handling for the pdf parser
-#[derive(Debug, Error)]
-pub enum ParserError {
-    #[error("failed ot read the pdf ")]
-    FileError,
-    #[error("this pdf formart is not recognized")]
-    UnknownFormat,
-}
-
 pub enum CheckerResult {
     UnlockedPdf(Vec<u8>),
     LockedPdf(Vec<u8>),
@@ -159,6 +154,7 @@ pub struct LockedPdfInfo {
     id: String,
     pdf: PdfFile,
 }
+
 //
 // Errors
 //
@@ -169,4 +165,13 @@ pub enum CheckError {
     CorruptedPdf(String),
     #[error("Provided a wrong password")]
     WrongPassword,
+}
+
+// this is error handling for the pdf parser
+#[derive(Debug, Error)]
+pub enum ParserError {
+    #[error("failed ot read the pdf ")]
+    FileError,
+    #[error("this pdf formart is not recognized")]
+    UnknownFormat,
 }

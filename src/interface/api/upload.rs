@@ -83,11 +83,11 @@ impl CheckPdfs{
 pub fn new(processor: StatementProcessor) -> Self{
     Self{
         processor
-}
+    }
 }
 // this is where the actual pdfs fall in
 // notice the input, thats how you pass files that come from devices, into a function
-pub async fn check_batch(data(form): MultipartForm<MediaForm>) -> impl Responder {
+pub async fn check_batch(&self, data(form): MultipartForm<MediaForm>) -> impl Responder {
     // i have to first assign the tax_year and entity
     let tax_year = form.user_data.year_of_upload;
     let user_type = form.user_data.tax_entity;
@@ -99,9 +99,13 @@ pub async fn check_batch(data(form): MultipartForm<MediaForm>) -> impl Responder
         pdfs_container.push(converter);
     }
 
-    let check_pdfs =
-    // i need to work on the pdfs and convert it to vec<u8>'s
 
+    let check_pdfs = self.batch_pdf_checks(pdfs_container);
+
+    if check_pdfs.locked_pdfs.is_empty() && check_pdfs.corrupted_pdfs.is_empty(){
+        let processed_statment =
+        return UploadCheckBatch::Completed{ batch_id: check_pdfs.id, }
+    }
 }
 
 // how do i then convert the files uploaded to what i need in code vec<u8>

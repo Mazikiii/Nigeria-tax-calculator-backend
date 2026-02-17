@@ -11,3 +11,26 @@ trait ProcessedStatementSaver: Send + Sync {
     // saves the processed statement to db
     async fn save_batch(&self, txs: Vec<ParsedTransaction>) -> Result<(), Err>;
 }
+
+#[async_trait]
+trait UserRepository {
+    async fn create_user(&self, user: User) -> Result<User, DbError>;
+    async fn find_by_id(&self, id: &str) -> Result<Option<User>, DbError>;
+    async fn find_by_email(&self, email: &str) -> Result<Option<User>, DbError>;
+}
+
+#[async_trait]
+trait TaxStateRepository {
+    async fn get_taxstate(&self, id: &str, year: u32) -> Result<UserTaxState, DbError>;
+    async fn save_taxstate(&self, id: &str, year: u32, state: UserTaxState) -> Result<(), DbError>;
+}
+
+// db error
+// its important to identify things that could go wrong in the database first
+#[derive(Debug)]
+pub enum DbError {
+    ConnectionError(String),
+    NotFound,
+    QueryError(String),
+    Conflict(String),
+}
