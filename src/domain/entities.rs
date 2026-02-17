@@ -1,3 +1,4 @@
+use crono::{DataTime, Utc};
 use rust_decimal::Decimal;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -11,10 +12,6 @@ pub struct LexiconFile {
     pub categories: HashMap<String, HashMap<String, CategoryRule>>,
 }
 
-pub struct User {
-    id: String,
-    email: String,
-}
 // this is for the arranged data from json, the subcatigory is either a keyword or pattern
 #[derive(Debug, Deserialize)]
 pub struct CategoryRule {
@@ -129,6 +126,21 @@ pub enum CheckerResult {
     UnlockedPdf(Vec<u8>),
     LockedPdf(Vec<u8>),
 }
+
+// Database structs ---
+// this must match the database table,
+pub struct User {
+    pub id: String, // uuid
+    pub email: String,
+    pub password_hash: Option<String>, // NULL for oauth users
+    pub auth_provider: String,         // 'email', 'google', 'apple'
+    pub provider_id: Option<String>,   // oauth provider ID
+    pub entity_type: TaxEntity,        // PIT or LLC
+    pub is_onboarded: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+// ---
 
 // used in interface for pdf identification
 pub struct PdfFile {

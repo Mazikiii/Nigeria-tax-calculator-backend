@@ -14,7 +14,18 @@ trait ProcessedStatementSaver: Send + Sync {
 
 #[async_trait]
 trait UserRepository {
-    async fn create_user(&self, user: User) -> Result<User, DbError>;
+    async fn create_user_with_password(
+        &self,
+        email: &str,
+        password_hash: &str,
+        entity_type: &str,
+    ) -> Result<User, DbError>;
+    async fn create_user_with_oauth(
+        &self,
+        auth_provider: &str,
+        provider_id: &str,
+        entity_type: &str,
+    ) -> Result<User, DbError>;
     async fn find_by_id(&self, id: &str) -> Result<Option<User>, DbError>;
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, DbError>;
 }

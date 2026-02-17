@@ -9,14 +9,14 @@ pub async fn create_pool() -> Result<PgPool, sqlx::Error> {
     // Then its time to connect based on that url
     let pool = PgPoolOptions::new()
         // managing amount of connections
-        .max_connection(10)
-        .min_connection(2)
+        .max_connections(10)
+        .min_connections(2)
         // i have to handle the timeline of existing connections, 3-5-10 rule
         .acquire_timeout(Duration::from_secs(5)) // Fail fast if connection is busy for more than 3s, somethings wrong
-        .idle_itemout(Duration::from_secs(300)) // the connection has no interaction for 5 min, close it
+        .idle_timeout(Duration::from_secs(300)) // the connection has no interaction for 5 min, close it
         .max_lifetime(Duration::from_secs(600)) // if the connection lives for 10 mins, refresh it, because of potential issues
         // test the health of the connection before trying to connect, so you know the database is good
-        .test_before_aquire(true)
+        .test_before_acquire(true)
         // then connect to the database
         .connect(&database_url)
         .await?;
@@ -25,7 +25,7 @@ pub async fn create_pool() -> Result<PgPool, sqlx::Error> {
     sqlx::query("SELECT 1").fetch_one(&pool).await?;
 
     // then return the okay pool
-    Ok(Pool)
+    Ok(pool)
 }
 
 //always set up a function that monitors connection and know active, idle connections
