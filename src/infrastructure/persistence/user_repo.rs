@@ -31,7 +31,8 @@ impl UserRespository for PostgresDb {
             entity_type
         )
         .fetch_one(&self.pool)
-        .map_err(|e| DbError::Entity(e.to_string()));
+        .await
+        .map_err(|e| DbError::QueryError(e.to_string()))?;
 
         Ok(create_row)
     }
@@ -43,10 +44,28 @@ impl UserRespository for PostgresDb {
         provider_id: &str,
         entity_type: &str,
     ) -> Result<User, DbError> {
-        let create_row = sqlx::query_as!(User, r#" INSERT INTO user (email, auth_provider, provider_id, entity_type) VALUES ($1,$2,$3,$4) RETURNING * "#, email, auth_provider, provider_id, entity_type)
-            .fetch_one(&self.pool) // the query needs to go to a pool
+        let create_row = sqlx::query_as!(User, r#" INSERT INTO users (email, auth_provider, provider_id, entity_type) VALUES ($1,$2,$3,$4) RETURNING * "#, email, auth_provider, provider_id, entity_type)
+            .fetch_one(&self.pool) // the query needs to go to a pool, and fetch exactly one row
             .await
-            .map_err(|e| DbError::QueryError(e.to_string()));
+            .map_err(|e| DbError::QueryError(e.to_string()))?;
         Ok(create_row)
+    }
+
+    async fn find_by_email(&self, email: &str) -> Result<Option<User>, DbError> {
+        let get_row = sqlx::query_as!(User, r#"SELECT * FROM users WHERE email = $1"#, email)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| DbError::QueryError(e.to_string()))?;
+
+        Ok(get_row)
+    }
+
+    async fn find_by_id(&self, id: &str) -> Result<Option<User>, DbError> {
+        let get_row = sqlx::query_as!(User, r#"SELECT * FROM users WHERE id = $1"#, id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| DbError::QueryError(e.to_string()))?;
+
+        Ok(get_row)
     }
 }

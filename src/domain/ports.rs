@@ -32,8 +32,13 @@ trait UserRepository {
 
 #[async_trait]
 trait TaxStateRepository {
-    async fn get_taxstate(&self, id: &str, year: u32) -> Result<UserTaxState, DbError>;
-    async fn save_taxstate(&self, id: &str, year: u32, state: UserTaxState) -> Result<(), DbError>;
+    async fn get_taxstate(&self, id: &str, tax_year: u32) -> Result<UserTaxState, DbError>;
+    async fn save_taxstate(
+        &self,
+        id: &str,
+        tax_year: u32,
+        state: UserTaxState,
+    ) -> Result<(), DbError>;
 }
 
 // db error
