@@ -1,6 +1,6 @@
-use crono::{DataTime, Utc};
+use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -74,6 +74,7 @@ pub enum TransactionRole {
 }
 
 // more like an uptodate tracker for each PIT users
+#[derive(Deserialize, Serialize)]
 pub struct PitTaxState {
     pub user_id: String,
     pub tax_year: u32, // this is to keep track of what year i am working with
@@ -81,6 +82,7 @@ pub struct PitTaxState {
     pub rent_relief_used_ytd: Decimal, // i need to keep track of the rent relief applied per year
 }
 
+#[derive(Deserialize, Serialize)]
 pub struct LLCTaxState {
     pub user_id: String,
     pub tax_year: u32,
@@ -93,6 +95,37 @@ pub enum UserTaxState {
     PIT(PitTaxState),
     LLC(LLCTaxState),
 }
+
+// ---
+// this are the entities needed for Auth token generations(access token, refresh token)
+//
+#[derive(Debug, Serialize)]
+pub struct AuthResponse {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub token_type: String, // Bearer
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AccessTokenPayload {
+    pub id: String, // the subject aka the id of the user
+    pub email: String,
+    pub entity_type: String,
+    pub role: String,
+    pub exp: usize,  // timestamp of experation of the token
+    pub iat: usize,  // the timestamp this token was issued
+    pub iss: String, // who issued the token?
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RefreshTokenPayload {
+    pub id: String, // the subject aka the id of the user
+    pub role: String,
+    pub exp: usize,  // timestamp of experation of the token
+    pub iat: usize,  // the timestamp this token was issued
+    pub iss: String, // who issued the token?
+}
+// ---
 
 // need a constructor for the various tax statess,(this is allowed in entites)
 impl LLCTaxState {
@@ -139,10 +172,11 @@ pub struct User {
     pub is_onboarded: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub role: String,
 }
 // ---
 
-// used in interface for pdf identification
+// used for pdf identification
 pub struct PdfFile {
     id: String,
     name: String,
