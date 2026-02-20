@@ -24,3 +24,4 @@ uuid = { version = "1.11", features = ["v4"] }
 actix-multipart = {version = "0.7.2", features = ["derive", "tempfile"]}
 jsonwebtoken = "10.3.0"
 chrono = "0.4.43"
+sha2 = "0.10.9"

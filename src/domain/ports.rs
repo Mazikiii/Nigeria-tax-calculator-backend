@@ -29,8 +29,12 @@ trait UserRepository {
         provider_id: &str,
         entity_type: &str,
     ) -> Result<User, DbError>;
+
     async fn find_by_id(&self, id: &str) -> Result<Option<User>, DbError>;
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, DbError>;
+
+    async fn hash_password(&self, pass: &str) -> Result<String, PasswordError>;
+    async fn verify_password(&self, pass: &str) -> Result<bool, PasswordError>;
 }
 
 // this is also some operations relating to the database that the app needs
@@ -75,4 +79,11 @@ pub enum TokenError {
     InvalidToken,
     Expired,
     GenerationError(String),
+}
+
+// this error is for password verification and hashing
+#[derive(Debug)]
+pub enum PasswordError {
+    VerificationFailed,
+    HashingFailed(String),
 }

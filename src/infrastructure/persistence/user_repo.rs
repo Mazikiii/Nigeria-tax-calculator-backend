@@ -1,6 +1,6 @@
 use crate::domain::entities::User;
 use crate::domain::ports::{DbError, UserRepository};
-
+use sha2::{Sha256,Digest}
 use sqlx::PgPool;
 
 struct PostgresDb {
@@ -67,5 +67,31 @@ impl UserRespository for PostgresDb {
             .map_err(|e| DbError::QueryError(e.to_string()))?;
 
         Ok(get_row)
+    }
+
+    async fn verify_password(&self, user: &User, pass: &str) -> Result<bool, PasswordError> {
+        // how do you verify a password
+        // i need to compare the provided password with what is in the database
+        // so i need to query the saved password and compare, if its the same return true, else false
+        let database_pass = sqlx::query_as!(User, r#"SELECT password_hash FROM users WHERE id = $1"#, id)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|| PasswordError::VerificationError);
+
+        if pass == database_pass{
+            true
+        }
+
+        if pass != database_pass{
+            false
+        }
+    }
+
+    async fn hash_password(&self, pass: &str) -> Result<String, PasswordError>{
+        let mut hasher = Sha256::new();
+        hasher.update(pass.as_byte()).map_err(|e| PasswordError::HashingFailed(e.to_string()));
+        let hashed_pass = hasher.finalize();
+
+        Ok(format!("{:x}", hashed_pass))
     }
 }
