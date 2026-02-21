@@ -11,6 +11,7 @@ impl<U: UserRepository, T: TokenService> LoginAndSignup<U, T> {
         Self(user_repo, token)
     }
 
+    // didn't handle signin with google and apple, the oauth guys
     pub async fn login(&self, email: &str, pass: &str) -> Result<(String, String), LoginError> {
         // first find the user by email
         let user = &self
