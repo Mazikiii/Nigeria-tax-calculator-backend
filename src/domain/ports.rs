@@ -1,4 +1,4 @@
-use crate::domain::entities::{ParsedTransaction, RawStatement};
+use crate::domain::entities::{ParsedTransaction, RawStatement, User};
 use async_trait::async_trait;
 
 // whatever is going to be used to parse the pdf must use this interface
@@ -34,7 +34,7 @@ trait UserRepository {
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, DbError>;
 
     async fn hash_password(&self, pass: &str) -> Result<String, PasswordError>;
-    async fn verify_password(&self, pass: &str) -> Result<bool, PasswordError>;
+    async fn verify_password(&self, user: &User, pass: &str) -> Result<bool, PasswordError>;
 }
 
 // this is also some operations relating to the database that the app needs
