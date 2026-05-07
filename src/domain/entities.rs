@@ -20,7 +20,7 @@ pub struct CategoryRule {
 }
 
 // data gotten after the actual statement is parsed
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RawStatement {
     // after the pdf is parsed this are the field we analyze, it is raw
     pub date: String,
@@ -31,6 +31,7 @@ pub struct RawStatement {
 
 // the logic for catigorizer processes the raw statement to parsed, majorly to identify
 // role, charges, and confidence
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ParsedTransaction {
     pub amount: Decimal,
     pub narration: String,
@@ -41,16 +42,22 @@ pub struct ParsedTransaction {
 }
 
 // after the calculator has gone through a collection of transaction its final result should be
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CalculationResult {
     // Delta (means change) a statement causes
     pub taxable_income_delta: Decimal, // (Income - Expenses/Reliefs)
-    pub total_credit_flow: Decimal,    // keeping track of the raw inflows
+    pub annual_taxable_income: Decimal,
+    pub tax_payable_ytd: Decimal,
+    pub tax_delta: Decimal,
+    pub development_levy_ytd: Decimal,
+    pub development_levy_delta: Decimal,
+    pub total_credit_flow: Decimal, // keeping track of the raw inflows
     pub is_valid_for_use: bool, // if the statement unknown transaction is greater than 30% it isn't reliable
     pub unknown_transactions: Vec<ParsedTransaction>,
 }
 
 // there are two major entities that have seperate logic
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TaxEntity {
     PIT,
     LLC,
@@ -58,7 +65,7 @@ pub enum TaxEntity {
 
 // based on the tax law, users narration can fall under about 6 categories
 // for both PIT and LLC
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TransactionRole {
     Income,      // standard taxable inflow (Salary)
     BusinessExp, // For LLCs, allowable expenses (Bank charges, Salaries paid)
@@ -74,23 +81,30 @@ pub enum TransactionRole {
 }
 
 // more like an uptodate tracker for each PIT users
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PitTaxState {
     pub user_id: String,
     pub tax_year: u32, // this is to keep track of what year i am working with
     pub taxable_income_ytd: Decimal,
     pub rent_relief_used_ytd: Decimal, // i need to keep track of the rent relief applied per year
+    pub pension_deduction_ytd: Decimal,
+    pub nhis_deduction_ytd: Decimal,
+    pub nhf_deduction_ytd: Decimal,
+    pub life_insurance_ytd: Decimal,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LLCTaxState {
     pub user_id: String,
     pub tax_year: u32,
     pub taxable_income_ytd: Decimal,
+    pub gross_turnover_ytd: Decimal,
+    pub fixed_assets_value: Decimal,
     pub business_expenses_ytd: Decimal,
     pub development_levy_ytd: Decimal,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum UserTaxState {
     PIT(PitTaxState),
     LLC(LLCTaxState),
@@ -129,11 +143,13 @@ pub struct RefreshTokenPayload {
 
 // need a constructor for the various tax statess,(this is allowed in entites)
 impl LLCTaxState {
-    fn new(user_id: String, tax_year: u32) -> Self {
+    pub fn new(user_id: String, tax_year: u32) -> Self {
         Self {
             user_id,
             tax_year,
             taxable_income_ytd: Decimal::ZERO,
+            gross_turnover_ytd: Decimal::ZERO,
+            fixed_assets_value: Decimal::ZERO,
             business_expenses_ytd: Decimal::ZERO,
             development_levy_ytd: Decimal::ZERO,
         }
@@ -177,28 +193,32 @@ pub struct User {
 // ---
 
 // used for pdf identification
+#[derive(Debug, Clone)]
 pub struct PdfFile {
-    id: String,
-    name: String,
-    data: Vec<u8>,
+    pub id: String,
+    pub name: String,
+    pub data: Vec<u8>,
 }
 
+#[derive(Debug, Clone)]
 pub struct PdfStates {
-    batch_id: String,
-    locked_pdf: Vec<PdfFile>,
-    unlocked_pdf: Vec<PdfFile>,
-    corrupted_pdf: Vec<CorruptedPdfInfo>, // the id of the pdf and message, no need for the full file
+    pub batch_id: String,
+    pub locked_pdf: Vec<PdfFile>,
+    pub unlocked_pdf: Vec<PdfFile>,
+    pub corrupted_pdf: Vec<CorruptedPdfInfo>, // the id of the pdf and message, no need for the full file
 }
 
+#[derive(Debug, Clone)]
 pub struct CorruptedPdfInfo {
-    id: String,
-    name: String,
-    error_msg: String,
+    pub id: String,
+    pub name: String,
+    pub error_msg: String,
 }
 
+#[derive(Debug, Clone)]
 pub struct LockedPdfInfo {
-    id: String,
-    pdf: PdfFile,
+    pub id: String,
+    pub pdf: PdfFile,
 }
 
 //
