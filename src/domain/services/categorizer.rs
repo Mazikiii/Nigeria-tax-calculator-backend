@@ -8,8 +8,7 @@ use regex::Regex;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use std::collections::{HashMap, HashSet};
-use std::fs; // this is particularly for handling multiple transactions categorization in parallelism
-use symspell_rs::{SymSpell, Verbosity};
+use strsim::levenshtein;
 // this library helps me to correct misspelled words (its works with a dictionary) but in our case our json converted to hashmap in keyword container
 // First i need to rule out whether the transaaction is a charge VAT or Stamp duties
 // there are going to be about four layers in this logic
@@ -33,23 +32,18 @@ pub struct TransactionCategorizer {
     keywords_container: HashMap<String, TransactionRole>,
     pattern_container: HashMap<String, Vec<PatternRule>>,
     charge_regex: Regex,
-    symspell_words: SymSpell,
+    dictionary_words: Vec<String>,
 }
 
 impl TransactionCategorizer {
     // need a constructor that fills the containers with the right data
     pub fn new() -> Self {
-        // to fill the containers we need the data in the json, need serde to parse after
-        let json_to_string =
-            fs::read_to_string("src/domain/lexicon.json").expect("Failed to read Json");
+        let json_to_string = include_str!("../lexicon.json");
 
         // now use serde to parse it properly, but and arrange it
         // the structure is needed which was defined as LexiconFile in entities
         let arranged_string: LexiconFile =
             serde_json::from_str(&json_to_string).expect("Failed to arrange string");
-
-        // need to initialize a variable for symspell
-        let mut symspell_words = SymSpell::default();
 
         // initialize the keyword and pattern containers
         let mut keywords_container = HashMap::new();
@@ -123,17 +117,15 @@ impl TransactionCategorizer {
             }
         }
 
-        // for symspell, add all key words
-        for words in &keywords_container.keys() {
-            symspell_words.create_dictionary_entry(words.clone(), 1);
-        }
+        let mut dictionary_words: Vec<String> = keywords_container.keys().cloned().collect();
+        dictionary_words.sort();
 
         return Self {
             keywords_container,
             pattern_container,
             charge_regex: Regex::new(r"(?i)(CHG|COMM|VAT|FEE|DUTY|LEVY|EMTL)[:\s]+([\d,]+\.?\d*)")
                 .expect("Invalid regex"),
-            symspell_words,
+            dictionary_words,
         };
     }
 
@@ -166,13 +158,13 @@ impl TransactionCategorizer {
     }
 
     // get patterns function
-    fn analyze_pattern(&self, words: &HashSet<String>) -> Option<TransactionRole> {
+    fn analyze_pattern(&self, words: &HashSet<String>) -> Option<(TransactionRole, u32)> {
         for word_in_pile in words {
             // if the word exists
             if let Some(patterns_list) = self.pattern_container.get(word_in_pile) {
                 for pattern in patterns_list {
                     if pattern.required_words.is_subset(words) {
-                        return Some(pattern.role);
+                        return Some((pattern.role, pattern.confidence));
                     }
                 }
             }
@@ -180,24 +172,28 @@ impl TransactionCategorizer {
         None
     }
 
-    fn fuzzy_checker(&self, words: &Hashset<String>) -> Hashset<String> {
-        let mut similarity_num = 100;
-        let corrected: Hashset<String> = Hashset::new();
-        for word in words {
-            let correct_word = symspell.lookup(words, Verbosity::Closest, 2); // the output of this is a vec of suggestions, it can be alot
-
-            if self.keywords_container.contains_key(words) {
-                corrected.insert(word.clone())
-            } else {
-                if let Some(suggestion) = correct_words.first() {
-                    corrected.insert(suggestion)
-                } else {
-                    corrected.insert(word)
+    fn fuzzy_checker(&self, words: &HashSet<String>) -> HashSet<String> {
+        // if the word is already valid no need to stress it
+        // if not i find the closest word in my tax dictionary
+        words
+            .iter()
+            .map(|word| {
+                if self.keywords_container.contains_key(word) {
+                    return word.clone();
                 }
-            }
-        }
 
-        corrected
+                self.dictionary_words
+                    .iter()
+                    .filter(|candidate| {
+                        let length_gap = candidate.len().abs_diff(word.len());
+                        length_gap <= 4
+                    })
+                    .min_by_key(|candidate| levenshtein(word, candidate))
+                    .filter(|candidate| levenshtein(word, candidate) <= 2)
+                    .cloned()
+                    .unwrap_or_else(|| word.clone())
+            })
+            .collect()
     }
 
     fn refine_for_pit(&self, role: TransactionRole, amount: Decimal) -> TransactionRole {
@@ -259,7 +255,7 @@ impl TransactionCategorizer {
     ) -> Vec<ParsedTransaction> {
         statements
             .into_par_iter() // split the work across CPU cores
-            .map(|raw| self.analyze_raw_statment(raw, user_type))
+            .map(|raw| self.analyze_raw_statment(raw, user_type.clone()))
             .collect() // collect results in order
     }
 
@@ -283,7 +279,7 @@ impl TransactionCategorizer {
             .map(|s| s.to_string())
             .collect();
 
-        let corrected_words = fuzzy_checker(&narration_words);
+        let corrected_words = self.fuzzy_checker(&narration_words);
 
         // layer by layer we check, first a pattern? no then keyword?
         let (base_role, confidence) = self.layer_processor(&corrected_words);
@@ -307,17 +303,15 @@ impl TransactionCategorizer {
     // layer by layer we check, first a pattern? no then keyword? fuzzy? ai last!
     // you could use coR here but that is overkill
     fn layer_processor(&self, words: &HashSet<String>) -> (TransactionRole, u32) {
-        if let Some(process) = self.analyze_pattern(words) {
-            return (process, 100);
+        if let Some((process, confidence)) = self.analyze_pattern(words) {
+            return (process, confidence);
         }
 
         if let Some(process) = self.analyze_keywords(words) {
             return (process, 100);
         }
 
-        // remaining ai layer
-
-        // if all failes then transaction unknown, ai handle it
+        // gemini can take over from the application layer when deterministic rules fail
         (TransactionRole::Unknown, 0)
     }
 }
