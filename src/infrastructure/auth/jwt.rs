@@ -1,6 +1,6 @@
 use crate::domain::entities::{AccessTokenPayload, RefreshTokenPayload, User};
-use crate::domain::port::{TokenError, TokenService};
-use chrono::{DateTime, Duration, Utc};
+use crate::domain::ports::{TokenError, TokenService};
+use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 //A key thing i noted is that the infrastructure layer jwt.rs doesn't creates the secret
 // but collects it
@@ -11,7 +11,7 @@ pub struct JwtServiceImpl {
 
 impl JwtServiceImpl {
     pub fn new(secret: String, issuer: String) -> Self {
-        Self(secret, issuer)
+        Self { secret, issuer }
     }
 }
 
@@ -19,22 +19,22 @@ impl TokenService for JwtServiceImpl {
     fn generate_access_token(&self, user: &User) -> Result<String, TokenError> {
         let current_time = Utc::now();
         let expiration_time = current_time + Duration::minutes(30);
-        let payload = TokenClaim {
+        let payload = AccessTokenPayload {
             // this will be used as the payload for the jwt
-            id: user.id,
+            id: user.id.clone(),
             email: user.email.clone(),
-            entity_type: user.entity_type.clone(),
+            entity_type: tax_entity_to_string(&user.entity_type),
             role: user.role.clone(),
             exp: expiration_time.timestamp() as usize,
             iat: current_time.timestamp() as usize,
-            iss: &self.issuer.clone(),
+            iss: self.issuer.clone(),
         };
 
         // the main generation now
         encode(
             &Header::new(Algorithm::HS256),
             &payload,
-            &EncodingKey::from_secret(&self.secret.as_bytes()),
+            &EncodingKey::from_secret(self.secret.as_bytes()),
         )
         .map_err(|e| TokenError::GenerationError(e.to_string()))
     }
@@ -43,12 +43,12 @@ impl TokenService for JwtServiceImpl {
         let current_time = Utc::now();
         let expiration_time = current_time + Duration::days(7);
 
-        let payload = TokenClaim {
-            id: user.id,
+        let payload = RefreshTokenPayload {
+            id: user.id.clone(),
             role: user.role.clone(),
             exp: expiration_time.timestamp() as usize,
             iat: current_time.timestamp() as usize,
-            iss: &self.issuer.clone(),
+            iss: self.issuer.clone(),
         };
 
         encode(
@@ -62,7 +62,7 @@ impl TokenService for JwtServiceImpl {
     fn validate_access_token(&self, token: &str) -> Result<AccessTokenPayload, TokenError> {
         // this is not creating a new signature, It's a configuration object that tells the decoder
         // to expect HS256. then apply some validation checks
-        let mut validation = Validation::new(Algorithm::SH256);
+        let mut validation = Validation::new(Algorithm::HS256);
         validation.set_issuer(&[&self.issuer]);
         validation.validate_exp = true;
         validation.leeway = 60;
@@ -76,7 +76,7 @@ impl TokenService for JwtServiceImpl {
         .map_err(|e| match e.kind() {
             jsonwebtoken::errors::ErrorKind::ExpiredSignature => TokenError::Expired,
             _ => TokenError::InvalidToken,
-        });
+        })?;
 
         Ok(decoded.claims) // this claims is basically the AccessTokenPayload, after validation pass, with the data it originally contained
     }
@@ -89,14 +89,21 @@ impl TokenService for JwtServiceImpl {
 
         let decoded = decode::<RefreshTokenPayload>(
             token,
-            &Decodingkey::from_secret(self.secret.as_bytes()),
+            &DecodingKey::from_secret(self.secret.as_bytes()),
             &validation,
         )
         .map_err(|e| match e.kind() {
             jsonwebtoken::errors::ErrorKind::ExpiredSignature => TokenError::Expired,
             _ => TokenError::InvalidToken,
-        });
+        })?;
 
         Ok(decoded.claims)
+    }
+}
+
+fn tax_entity_to_string(entity: &crate::domain::entities::TaxEntity) -> String {
+    match entity {
+        crate::domain::entities::TaxEntity::PIT => "PIT".to_string(),
+        crate::domain::entities::TaxEntity::LLC => "LLC".to_string(),
     }
 }

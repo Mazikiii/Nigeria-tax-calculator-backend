@@ -6,15 +6,17 @@ use thiserror::Error;
 
 // this is for storing the processed json. Defined the hashmap according to the
 // structure i want
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LexiconFile {
     #[serde(flatten)]
     pub categories: HashMap<String, HashMap<String, CategoryRule>>,
 }
 
 // this is for the arranged data from json, the subcatigory is either a keyword or pattern
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CategoryRule {
+    #[serde(default)]
+    pub role: Option<TransactionRole>,
     pub keywords: Vec<String>,
     pub patterns: Vec<Vec<String>>,
 }

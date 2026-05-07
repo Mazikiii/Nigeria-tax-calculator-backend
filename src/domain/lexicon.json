@@ -803,5 +803,48 @@
     }
   },
 
-  "pass_through": {}
+  "pass_through": {
+    "AGENCY_FUNDS": {
+      "keywords": [
+        "ON BEHALF",
+        "BEHALF",
+        "MIDDLEMAN",
+        "AGENT",
+        "AGENCY",
+        "ESCROW",
+        "DISBURSEMENT",
+        "DISBURSE",
+        "REMITTANCE",
+        "REMIT",
+        "PASS THROUGH",
+        "PASSTHROUGH",
+        "PASS-THROUGH",
+        "FORWARDED",
+        "HOLDING",
+        "HELD",
+        "CLIENT FUNDS",
+        "CUSTOMER FUNDS",
+        "THIRD PARTY"
+      ],
+      "patterns": [
+        ["ON", "BEHALF"],
+        ["PAY", "ON", "BEHALF"],
+        ["TRANSFER", "ON", "BEHALF"],
+        ["RECEIVED", "FOR"],
+        ["COLLECTED", "FOR"],
+        ["HOLD", "FOR"],
+        ["HELD", "FOR"],
+        ["FORWARD", "TO"],
+        ["REMIT", "TO"],
+        ["THIRD", "PARTY"],
+        ["STAFF", "SALARY", "DISBURSEMENT"],
+        ["SALARY", "DISBURSEMENT"],
+        ["FUNDS", "SALARY"],
+        ["FUNDS", "DISBURSEMENT"],
+        ["CLIENT", "FUNDS"],
+        ["CUSTOMER", "FUNDS"],
+        ["ESCROW", "RELEASE"]
+      ]
+    }
+  }
 }
