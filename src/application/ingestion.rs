@@ -134,25 +134,28 @@ impl StatementProcessor {
         mode: ProcessorMode,
         user_uptodate_state: &UserTaxState,
     ) -> Result<(SingleStatementResult, Option<UserTaxState>), ProcessorError> {
-        //okay so i need to collect the inputs and associate them properly
-        // the pdf data that is given goes into the statment parser
-        // the tax_type is used for both pit/llc entities and used for categorizer
-        // then year is also used for an entity
+        // the parser returns raw rows first, because classification only makes sense after the pdf text has been normalized
+        let pdf_processor = self
+            .statment_parser
+            .parse_pdf(pdf_datas)
+            .await
+            .map_err(|e| ProcessorError::pdf_parsing_error(format!("{e:?}")))?;
 
-        let pdf_processor = self.statment_parser.parse_pdf(pdf_datas).await;
-
+        // each raw row gets pushed through the transaction categorizer before the tax calculator touches it
         let pdf_categorizer = self
             .categorizer
             .analyze_batch_parallel(pdf_processor, tax_type.clone());
 
         let (pdf_statement_calculator, updated_status) = match mode {
             ProcessorMode::Preview => {
+                // preview means i only want the result of this statement, not the final persisted yearly state
                 let result = self
                     .statement_calculator
                     .preview_calculation(pdf_categorizer.clone(), &user_uptodate_state);
                 (result, None)
             }
             ProcessorMode::Final => {
+                // final means the statement should advance the running yearly state
                 let (result, state) = self
                     .statement_calculator
                     .finalize_calculation(pdf_categorizer.clone(), &user_uptodate_state);
@@ -207,11 +210,7 @@ impl StatementProcessor {
         mode: ProcessorMode,
         user_state: &UserTaxState,
     ) -> Result<BatchProcessed, ProcessorError> {
-        // i need to go through each pdf and pass it to process statement
-        // i need to pass references or clones to that function
-        // i need a storage for the valid and invalid statments
-        // i need to create a batch id
-        // i need a something that stores the overall state of all statements that was accepted
+        // the batch gets one shared state that advances only when final mode is active
         let batch_id = uuid::Uuid::new_v4().to_string();
         let mut valid_statement_container: Vec<ValidStatement> = Vec::new();
         let mut invalid_statement_container: Vec<InvalidStatement> = Vec::new();
@@ -231,8 +230,8 @@ impl StatementProcessor {
                 .await?;
 
             if let Some(update_s) = maybe_updated_state {
-                // remember preview and finalize outputs
-                updated_state = updated_s; // i always updating the state for the next statement to work with
+                // the state is only moved forward in final mode
+                updated_state = update_s;
             }
 
             if let SingleStatementResult::Valid(valid_s) = statment {
@@ -424,6 +423,7 @@ impl StatementProcessor {
             if let Some(password) = passwords.get(&pdf.id) {
                 match self.pdf_decrypter.decrypt_pdf(&pdf.data, password) {
                     Ok(decrypted_data) => {
+                        // decrypted bytes go back into the unlocked bucket so the parser can work on them immediately
                         pdfs.unlocked_pdf.push(PdfFile {
                             id: pdf.id,
                             name: pdf.name,
@@ -437,7 +437,8 @@ impl StatementProcessor {
             }
         }
 
-        pdfs.locked_pdf = still_locked; // update with only failed ones
+        // only the files that still failed password validation remain locked
+        pdfs.locked_pdf = still_locked;
         pdfs
     }
 }
