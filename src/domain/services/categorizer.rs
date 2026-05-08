@@ -36,33 +36,46 @@ pub struct TransactionCategorizer {
 }
 
 impl TransactionCategorizer {
-    // need a constructor that fills the containers with the right data
-    pub fn new() -> Self {
-        let json_to_string = include_str!("../lexicon.json");
-
-        // now use serde to parse it properly, but and arrange it
-        // the structure is needed which was defined as LexiconFile in entities
-        let arranged_string: LexiconFile =
-            serde_json::from_str(&json_to_string).expect("Failed to arrange string");
-
-        // initialize the keyword and pattern containers
+    // i build the categorizer from a loaded lexicon so the storage layer stays outside this file
+    pub fn from_lexicon(arranged_string: LexiconFile) -> Self {
+        // the containers stay in memory because the classifier reads them a lot
         let mut keywords_container = HashMap::new();
         let mut pattern_container: HashMap<String, Vec<PatternRule>> = HashMap::new();
 
+        Self::build_containers(arranged_string, &mut keywords_container, &mut pattern_container);
+
+        let mut dictionary_words: Vec<String> = keywords_container.keys().cloned().collect();
+        dictionary_words.sort();
+
+        Self {
+            keywords_container,
+            pattern_container,
+            charge_regex: Regex::new(r"(?i)(CHG|COMM|VAT|FEE|DUTY|LEVY|EMTL)[:\s]+([\d,]+\.?\d*)")
+                .expect("Invalid regex"),
+            dictionary_words,
+        }
+    }
+
+    // i split this out because the same nested lexicon shape can come from db or from tests
+    fn build_containers(
+        arranged_string: LexiconFile,
+        keywords_container: &mut HashMap<String, TransactionRole>,
+        pattern_container: &mut HashMap<String, Vec<PatternRule>>,
+    ) {
+        // initialize the keyword and pattern containers
         // now fill the container with a loop based on the arranged string var
         for (category, sub_category) in arranged_string.categories {
             // lets store key words and patterns
             for (sub_cat_name, data) in sub_category {
                 // have to give each category a role
                 // dynamically checking Sub-Category name first
-                let role = match sub_cat_name.as_str() {
+                let role = data.role.unwrap_or_else(|| match sub_cat_name.as_str() {
                     // sub categories
                     // the subwords are uppercase in the json
                     "RENT" => TransactionRole::Rent,
                     "UTILITIES" => TransactionRole::Utilities,
                     "SALARY" => TransactionRole::Salary,
                     "SCHOOL" | "TUITION" => TransactionRole::Relief, // Education is still generic Relief
-
                     _ => {
                         //if not in the above categories, check the below too
                         match category.as_str() {
@@ -78,7 +91,7 @@ impl TransactionCategorizer {
                             _ => TransactionRole::Unknown,
                         }
                     }
-                };
+                });
 
                 if role == TransactionRole::Unknown {
                     continue; // we actually do not need any unknown role in this iteration so skip it
@@ -116,17 +129,6 @@ impl TransactionCategorizer {
                 }
             }
         }
-
-        let mut dictionary_words: Vec<String> = keywords_container.keys().cloned().collect();
-        dictionary_words.sort();
-
-        return Self {
-            keywords_container,
-            pattern_container,
-            charge_regex: Regex::new(r"(?i)(CHG|COMM|VAT|FEE|DUTY|LEVY|EMTL)[:\s]+([\d,]+\.?\d*)")
-                .expect("Invalid regex"),
-            dictionary_words,
-        };
     }
 
     // get charges function
